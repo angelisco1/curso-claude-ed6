@@ -5,7 +5,8 @@ const NOT_FOUND_ERRORS = [
     'EmployeeNotFoundError',
     'RestaurantNotFoundError',
     'IngredientNotFoundError',
-    'DishNotFoundError'
+    'DishNotFoundError',
+    'OrderNotFoundError'
 ]
 
 const UNAUTHORIZED_ERRORS = [
