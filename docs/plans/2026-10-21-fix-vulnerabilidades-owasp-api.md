@@ -149,7 +149,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 
 **Aislamiento por restaurante (A01)**
 
-- [ ] **T5** (~10 min) — Crear el helper de tests HTTP: inicializar `dbConfig` en `beforeAll`, `tokenFor({ role, restaurantId })` firmando con `getJwtSecret()` y semillas mínimas de dos restaurantes (A y B) — `packages/api/src/test/http-helpers.ts`
+- [x] **T5** (~10 min) — Crear el helper de tests HTTP: inicializar `dbConfig` en `beforeAll`, `tokenFor({ role, restaurantId })` firmando con `getJwtSecret()` y semillas mínimas de dos restaurantes (A y B) — `packages/api/src/test/http-helpers.ts`
 - [ ] **T6** (~10 min) — Middleware `authorizeRestaurant` (admin pasa; resto exige `restaurantId` del token igual a `:restaurantId`; si no, 403) con tests unitarios — `packages/api/src/contexts/shared/infrastructure/http/middlewares.ts`
 - [ ] **T7** (~5 min) — Aplicar `authorizeRestaurant` a las cinco rutas de platos — `packages/api/src/routes/dish.routes.ts`
 - [ ] **T8** (~5 min) — Aplicar `authorizeRestaurant` a las cinco rutas de ingredientes — `packages/api/src/routes/ingredient.routes.ts`
