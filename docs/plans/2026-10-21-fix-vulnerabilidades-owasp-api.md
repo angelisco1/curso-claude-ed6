@@ -162,7 +162,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 - [x] **T12** (~5 min) — `DishController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/dish.controller.ts`
 - [x] **T13** (~10 min) — `IngredientService`: `findById`, `update` y `delete` reciben `restaurantId` y lanzan `IngredientNotFoundError` si no coincide; adaptar `ingredient.service.test.ts` — `packages/api/src/services/ingredient.service.ts`
 - [x] **T14** (~5 min) — `IngredientController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/ingredient.controller.ts`
-- [ ] **T15** (~5 min) — Test HTTP: admin y manager de A reciben 404 al hacer `PUT` o `DELETE` de un plato o ingrediente de B usando la ruta `/restaurants/A/...` — `packages/api/src/routes/restaurant-isolation.test.ts`
+- [x] **T15** (~5 min) — Test HTTP: admin y manager de A reciben 404 al hacer `PUT` o `DELETE` de un plato o ingrediente de B usando la ruta `/restaurants/A/...` — `packages/api/src/routes/restaurant-isolation.test.ts`
 
 **Pedidos (A01)**
 

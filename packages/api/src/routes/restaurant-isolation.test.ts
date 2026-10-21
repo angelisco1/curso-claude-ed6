@@ -104,4 +104,40 @@ describe('aislamiento por restaurante en platos e ingredientes', () => {
             expect(ing.status).toBe(200)
         })
     })
+
+    describe('IDOR: recurso de B usando la ruta de A', () => {
+        it('admin y manager de A reciben 404 en PUT de un plato de B y no lo modifican', async () => {
+            for (const token of [admin, managerA]) {
+                const res = await request(app).put(`/api/v1/restaurants/${seed.restaurantA}/dishes/${seed.dishB}`).set('Authorization', token).send(dishUpdate)
+                expect(res.status).toBe(404)
+            }
+            const plato = await request(app).get(`/api/v1/restaurants/${seed.restaurantB}/dishes/${seed.dishB}`).set('Authorization', admin)
+            expect(plato.body.name).toBe('Plato de prueba')
+        })
+
+        it('admin y manager de A reciben 404 en DELETE de un plato de B y no lo borran', async () => {
+            for (const token of [admin, managerA]) {
+                const res = await request(app).delete(`/api/v1/restaurants/${seed.restaurantA}/dishes/${seed.dishB}`).set('Authorization', token)
+                expect(res.status).toBe(404)
+            }
+            const plato = await request(app).get(`/api/v1/restaurants/${seed.restaurantB}/dishes/${seed.dishB}`).set('Authorization', admin)
+            expect(plato.status).toBe(200)
+        })
+
+        it('GET de un plato o ingrediente de B por la ruta de A -> 404', async () => {
+            const plato = await request(app).get(`/api/v1/restaurants/${seed.restaurantA}/dishes/${seed.dishB}`).set('Authorization', managerA)
+            expect(plato.status).toBe(404)
+            const ing = await request(app).get(`/api/v1/restaurants/${seed.restaurantA}/ingredients/${seed.ingredientB}`).set('Authorization', managerA)
+            expect(ing.status).toBe(404)
+        })
+
+        it('admin recibe 404 en PUT y DELETE de un ingrediente de B por la ruta de A', async () => {
+            const put = await request(app).put(`/api/v1/restaurants/${seed.restaurantA}/ingredients/${seed.ingredientB}`).set('Authorization', admin).send(ingredientBody)
+            expect(put.status).toBe(404)
+            const del = await request(app).delete(`/api/v1/restaurants/${seed.restaurantA}/ingredients/${seed.ingredientB}`).set('Authorization', admin)
+            expect(del.status).toBe(404)
+            const ing = await request(app).get(`/api/v1/restaurants/${seed.restaurantB}/ingredients/${seed.ingredientB}`).set('Authorization', admin)
+            expect(ing.status).toBe(200)
+        })
+    })
 })
