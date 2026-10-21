@@ -27,7 +27,8 @@ export class OrderController {
 
     async getActiveOrders(req: Request, res: Response): Promise<void> {
         try {
-            const { restaurantId } = req.query
+            const user = (req as any).user
+            const restaurantId = user?.role === 'admin' ? req.query.restaurantId : user?.restaurantId
             if (!restaurantId || typeof restaurantId !== 'string') {
                 res.status(400).json({ error: 'restaurantId is required' })
                 return
