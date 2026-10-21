@@ -15,6 +15,12 @@ export interface CreateOrderRequest {
     }[]
 }
 
+export interface OrderRequester {
+    id: string
+    role: string
+    restaurantId: string | null
+}
+
 export class OrderService {
     constructor(private readonly orderRepository: OrderRepository) {}
 
@@ -54,9 +60,9 @@ export class OrderService {
         return this.orderRepository.findActiveByRestaurant(restaurantId)
     }
 
-    async getById(orderId: string): Promise<Order> {
+    async getById(orderId: string, requester: OrderRequester): Promise<Order> {
         const order = await this.orderRepository.findById(orderId)
-        if (!order) {
+        if (!order || !this.canView(order, requester)) {
             throw new OrderNotFoundError()
         }
         return order
@@ -81,5 +87,11 @@ export class OrderService {
         item.status = normalizedStatus
 
         await this.orderRepository.updateItemStatus(orderId, itemId, normalizedStatus)
+    }
+
+    private canView(order: Order, requester: OrderRequester): boolean {
+        if (requester.role === 'admin') return true
+        if (requester.role === 'cliente') return order.clientId === requester.id
+        return requester.restaurantId !== null && order.restaurantId === requester.restaurantId
     }
 }

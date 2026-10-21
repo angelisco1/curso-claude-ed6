@@ -167,7 +167,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 **Pedidos (A01)**
 
 - [x] **T16** (~5 min) — Añadir `OrderNotFoundError` a `NOT_FOUND_ERRORS` para que responda 404; test del `errorHandler` — `packages/api/src/contexts/shared/infrastructure/http/errorHandler.ts`
-- [ ] **T17** (~10 min) — `OrderService.getById(orderId, requester)`: admin cualquiera, empleado solo su restaurante, cliente solo si `clientId === requester.id`; si no, `OrderNotFoundError` — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
+- [x] **T17** (~10 min) — `OrderService.getById(orderId, requester)`: admin cualquiera, empleado solo su restaurante, cliente solo si `clientId === requester.id`; si no, `OrderNotFoundError` — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
 - [ ] **T18** (~10 min) — `OrderService.updateItemStatus(orderId, itemId, status, requester)`: comprobar el restaurante del pedido contra el del token (admin exento) — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
 - [ ] **T19** (~5 min) — `OrderController.getActiveOrders`: el `restaurantId` sale de `req.user` para los roles no admin; solo el admin usa el de la query (400 si el admin no lo envía) — `packages/api/src/controllers/order.controller.ts`
 - [ ] **T20** (~10 min) — `OrderController`: eliminar los `try/catch` que devuelven `error.message`, usar `next(error)`, pasar `requester` desde `req.user` en `getById` y `updateItemStatus` — `packages/api/src/controllers/order.controller.ts`
