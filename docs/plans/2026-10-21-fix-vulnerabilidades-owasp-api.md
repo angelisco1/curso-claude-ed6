@@ -180,7 +180,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 - [x] **T24** (~10 min) — Fábrica `createAuthRateLimiters(options?)` con límites de login (IP + email) y register, 429 con mensaje en español y límites leídos de variables de entorno — `packages/api/src/contexts/shared/infrastructure/http/rateLimit.ts`
 - [x] **T25** (~5 min) — Aplicar los limitadores a `POST /login` y `POST /register` — `packages/api/src/contexts/employee/infrastructure/http/auth.routes.ts`
 - [x] **T26** (~10 min) — Test HTTP: el intento N+1 de login devuelve 429; una IP o email distintos no se ven afectados — `packages/api/src/contexts/employee/infrastructure/http/auth.routes.test.ts`
-- [ ] **T27** (~5 min) — `seed.ts`: abortar con mensaje claro si `NODE_ENV === 'production'` — `packages/api/src/scripts/seed.ts`
+- [x] **T27** (~5 min) — `seed.ts`: abortar con mensaje claro si `NODE_ENV === 'production'` — `packages/api/src/scripts/seed.ts`
 
 ### Fase 2 — Medio
 
