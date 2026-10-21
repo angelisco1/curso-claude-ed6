@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import type { IngredientService } from '@services/ingredient.service.js'
 import type { Ingredient } from '@models/ingredient.model.js'
-import { IngredientNotFoundError } from '@errors/DomainErrors.js'
 
 export class IngredientController {
     constructor(private readonly ingredientService: IngredientService) {}
@@ -31,10 +30,7 @@ export class IngredientController {
 
     getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const ingredient = await this.ingredientService.findById(req.params.id as string)
-            if (!ingredient) {
-                throw new IngredientNotFoundError()
-            }
+            const ingredient = await this.ingredientService.findById(req.params.restaurantId as string, req.params.id as string)
             res.status(200).json(this.toJSON(ingredient))
         } catch (error) {
             next(error)
@@ -43,7 +39,7 @@ export class IngredientController {
 
     update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const ingredient = await this.ingredientService.update(req.params.id as string, {
+            const ingredient = await this.ingredientService.update(req.params.restaurantId as string, req.params.id as string, {
                 name: req.body.name,
                 unit: req.body.unit,
                 currentStock: req.body.currentStock
@@ -56,7 +52,7 @@ export class IngredientController {
 
     delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            await this.ingredientService.delete(req.params.id as string)
+            await this.ingredientService.delete(req.params.restaurantId as string, req.params.id as string)
             res.status(204).send()
         } catch (error) {
             next(error)
