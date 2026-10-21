@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { IngredientService } from './ingredient.service.js'
 import { normalizeIngredientUnit } from '@models/ingredient.model.js'
+import { IngredientNotFoundError } from '@errors/DomainErrors.js'
 import { MockIngredientRepository } from '@repositories/mocks/MockIngredientRepository.js'
 
 describe('normalizeIngredientUnit', () => {
@@ -84,7 +85,7 @@ describe('IngredientService', () => {
         it('should update an existing ingredient', async () => {
             const created = await service.create(validInput)
 
-            const updated = await service.update(created.id, {
+            const updated = await service.update('r1', created.id, {
                 name: 'Tomate Cherry',
                 unit: 'kg',
                 currentStock: 15
@@ -95,7 +96,7 @@ describe('IngredientService', () => {
         })
 
         it('should throw IngredientNotFoundError for non-existent id', async () => {
-            await expect(service.update('non-existent', {
+            await expect(service.update('r1', 'non-existent', {
                 name: 'X',
                 unit: 'kg',
                 currentStock: 0
@@ -107,15 +108,41 @@ describe('IngredientService', () => {
         it('should delete an existing ingredient', async () => {
             const created = await service.create(validInput)
 
-            await service.delete(created.id)
+            await service.delete('r1', created.id)
 
             const found = await repo.findById(created.id)
             expect(found).toBeNull()
         })
 
         it('should throw IngredientNotFoundError for non-existent id', async () => {
-            await expect(service.delete('non-existent'))
+            await expect(service.delete('r1', 'non-existent'))
                 .rejects.toThrow('Ingredient not found')
+        })
+    })
+
+    describe('aislamiento por restaurante', () => {
+        const dto = { name: 'X', unit: 'kg', currentStock: 1 }
+
+        it('findById devuelve el ingrediente del restaurante', async () => {
+            const created = await service.create(validInput)
+            expect((await service.findById('r1', created.id)).id).toBe(created.id)
+        })
+
+        it('findById lanza IngredientNotFoundError si es de otro restaurante', async () => {
+            const created = await service.create(validInput)
+            await expect(service.findById('r2', created.id)).rejects.toThrow(IngredientNotFoundError)
+        })
+
+        it('update lanza IngredientNotFoundError si es de otro restaurante y no lo modifica', async () => {
+            const created = await service.create(validInput)
+            await expect(service.update('r2', created.id, dto)).rejects.toThrow(IngredientNotFoundError)
+            expect((await service.findById('r1', created.id)).name).toBe('Tomate')
+        })
+
+        it('delete lanza IngredientNotFoundError si es de otro restaurante y no lo elimina', async () => {
+            const created = await service.create(validInput)
+            await expect(service.delete('r2', created.id)).rejects.toThrow(IngredientNotFoundError)
+            expect(await repo.findById(created.id)).not.toBeNull()
         })
     })
 })
