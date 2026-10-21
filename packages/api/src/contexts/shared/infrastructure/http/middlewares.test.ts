@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { getJwtSecret } from '@config/jwt.js'
-import { authenticate, type AuthRequest } from '@shared/infrastructure/http/middlewares.js'
+import { authenticate, authorizeRestaurant, type AuthRequest, type AuthUser } from '@shared/infrastructure/http/middlewares.js'
 
 const crearRes = () => {
     const res: any = {}
@@ -72,6 +72,52 @@ describe('authenticate', () => {
         authenticate(crearReq(), res, next)
 
         expect(res.status).toHaveBeenCalledWith(401)
+        expect(next).not.toHaveBeenCalled()
+    })
+})
+
+describe('authorizeRestaurant', () => {
+    const ejecutar = (user: AuthUser | undefined, restaurantId: string | undefined) => {
+        const req = { user, params: { restaurantId } } as unknown as AuthRequest
+        const res = crearRes()
+        const next = vi.fn()
+        authorizeRestaurant(req, res, next)
+        return { res, next }
+    }
+
+    it('deja pasar al admin aunque no tenga restaurante', () => {
+        const { next, res } = ejecutar({ id: 'a', role: 'admin', restaurantId: null }, 'r1')
+        expect(next).toHaveBeenCalledOnce()
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    it('deja pasar a un empleado de su propio restaurante', () => {
+        const { next } = ejecutar({ id: 'm', role: 'manager', restaurantId: 'r1' }, 'r1')
+        expect(next).toHaveBeenCalledOnce()
+    })
+
+    it('responde 403 a un empleado de otro restaurante', () => {
+        const { next, res } = ejecutar({ id: 'm', role: 'manager', restaurantId: 'r1' }, 'r2')
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ error: 'Forbidden: Insufficient permissions' })
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it('responde 403 a un usuario sin restaurante que no es admin', () => {
+        const { next, res } = ejecutar({ id: 'c', role: 'cliente', restaurantId: null }, 'r1')
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it('responde 403 si el parámetro restaurantId no existe', () => {
+        const { next, res } = ejecutar({ id: 'm', role: 'manager', restaurantId: null }, undefined)
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it('responde 403 si no hay usuario autenticado', () => {
+        const { next, res } = ejecutar(undefined, 'r1')
+        expect(res.status).toHaveBeenCalledWith(403)
         expect(next).not.toHaveBeenCalled()
     })
 })
