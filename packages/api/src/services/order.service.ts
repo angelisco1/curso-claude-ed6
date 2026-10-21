@@ -72,9 +72,9 @@ export class OrderService {
         return this.orderRepository.findByClientId(clientId)
     }
 
-    async updateItemStatus(orderId: string, itemId: string, status: string): Promise<void> {
+    async updateItemStatus(orderId: string, itemId: string, status: string, requester: OrderRequester): Promise<void> {
         const order = await this.orderRepository.findById(orderId)
-        if (!order) {
+        if (!order || requester.role === 'cliente' || !this.canView(order, requester)) {
             throw new OrderNotFoundError()
         }
 

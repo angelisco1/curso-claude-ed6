@@ -8,6 +8,9 @@ describe('OrderService.updateItemStatus', () => {
     let repo: MockOrderRepository
     let service: OrderService
     let testOrder: Order
+    const camareroA: OrderRequester = { id: 'u-cam', role: 'camarero', restaurantId: 'rest-1' }
+    const camareroB: OrderRequester = { id: 'u-camB', role: 'camarero', restaurantId: 'rest-2' }
+    const admin: OrderRequester = { id: 'u-admin', role: 'admin', restaurantId: null }
 
     beforeEach(async () => {
         repo = new MockOrderRepository()
@@ -27,24 +30,41 @@ describe('OrderService.updateItemStatus', () => {
     })
 
     it('should update the status of an item successfully', async () => {
-        await service.updateItemStatus('order-1', 'item-1', 'preparando')
+        await service.updateItemStatus('order-1', 'item-1', 'preparando', camareroA)
         const updatedItem = testOrder.items[0]!
         expect(updatedItem.status).toBe('preparando')
     })
 
     it('should throw an error if the order does not exist', async () => {
-        await expect(service.updateItemStatus('order-bad', 'item-1', 'preparando'))
+        await expect(service.updateItemStatus('order-bad', 'item-1', 'preparando', camareroA))
             .rejects.toThrow(OrderNotFoundError)
     })
 
     it('should throw an error if the item does not exist inside the order', async () => {
-        await expect(service.updateItemStatus('order-1', 'item-bad', 'preparando'))
+        await expect(service.updateItemStatus('order-1', 'item-bad', 'preparando', camareroA))
             .rejects.toThrow(OrderNotFoundError)
     })
 
     it('should throw DomainError if status is invalid', async () => {
-        await expect(service.updateItemStatus('order-1', 'item-1', 'invalid-status'))
+        await expect(service.updateItemStatus('order-1', 'item-1', 'invalid-status', camareroA))
             .rejects.toThrow(InvalidOrderStatusError)
+    })
+
+    it('el admin puede actualizar items de cualquier restaurante', async () => {
+        await service.updateItemStatus('order-1', 'item-1', 'listo', admin)
+        expect(testOrder.items[0]!.status).toBe('listo')
+    })
+
+    it('un empleado de otro restaurante recibe OrderNotFoundError y no modifica el item', async () => {
+        await expect(service.updateItemStatus('order-1', 'item-1', 'listo', camareroB))
+            .rejects.toThrow(OrderNotFoundError)
+        expect(testOrder.items[0]!.status).toBe('pendiente')
+    })
+
+    it('un cliente recibe OrderNotFoundError aunque sea el dueño del pedido', async () => {
+        const cliente: OrderRequester = { id: 'cli-1', role: 'cliente', restaurantId: null }
+        await expect(service.updateItemStatus('order-1', 'item-1', 'listo', cliente))
+            .rejects.toThrow(OrderNotFoundError)
     })
 })
 
