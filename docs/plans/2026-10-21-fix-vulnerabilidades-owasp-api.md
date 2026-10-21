@@ -157,21 +157,21 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 
 **IDOR en platos e ingredientes (A01)**
 
-- [ ] **T10** (~10 min) — `DishService`: `findById(restaurantId, id)`, `update(restaurantId, id, input)` y `delete(restaurantId, id)` lanzan `DishNotFoundError` si el plato es de otro restaurante; test unitario con `MockDishRepository` — `packages/api/src/services/dish.service.ts`, `dish.service.test.ts`
-- [ ] **T11** (~5 min) — Crear `MockDishRepository` (mapa en memoria) en la carpeta de mocks — `packages/api/src/repositories/mocks/MockDishRepository.ts`
-- [ ] **T12** (~5 min) — `DishController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/dish.controller.ts`
-- [ ] **T13** (~10 min) — `IngredientService`: `findById`, `update` y `delete` reciben `restaurantId` y lanzan `IngredientNotFoundError` si no coincide; adaptar `ingredient.service.test.ts` — `packages/api/src/services/ingredient.service.ts`
-- [ ] **T14** (~5 min) — `IngredientController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/ingredient.controller.ts`
+- [x] **T10** (~10 min) — `DishService`: `findById(restaurantId, id)`, `update(restaurantId, id, input)` y `delete(restaurantId, id)` lanzan `DishNotFoundError` si el plato es de otro restaurante; test unitario con `MockDishRepository` — `packages/api/src/services/dish.service.ts`, `dish.service.test.ts`
+- [x] **T11** (~5 min) — Crear `MockDishRepository` (mapa en memoria) en la carpeta de mocks — `packages/api/src/repositories/mocks/MockDishRepository.ts`
+- [x] **T12** (~5 min) — `DishController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/dish.controller.ts`
+- [x] **T13** (~10 min) — `IngredientService`: `findById`, `update` y `delete` reciben `restaurantId` y lanzan `IngredientNotFoundError` si no coincide; adaptar `ingredient.service.test.ts` — `packages/api/src/services/ingredient.service.ts`
+- [x] **T14** (~5 min) — `IngredientController`: pasar `req.params.restaurantId` a `getById`, `update` y `delete` — `packages/api/src/controllers/ingredient.controller.ts`
 - [ ] **T15** (~5 min) — Test HTTP: admin y manager de A reciben 404 al hacer `PUT` o `DELETE` de un plato o ingrediente de B usando la ruta `/restaurants/A/...` — `packages/api/src/routes/restaurant-isolation.test.ts`
 
 **Pedidos (A01)**
 
-- [ ] **T16** (~5 min) — Añadir `OrderNotFoundError` a `NOT_FOUND_ERRORS` para que responda 404; test del `errorHandler` — `packages/api/src/contexts/shared/infrastructure/http/errorHandler.ts`
-- [ ] **T17** (~10 min) — `OrderService.getById(orderId, requester)`: admin cualquiera, empleado solo su restaurante, cliente solo si `clientId === requester.id`; si no, `OrderNotFoundError` — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
-- [ ] **T18** (~10 min) — `OrderService.updateItemStatus(orderId, itemId, status, requester)`: comprobar el restaurante del pedido contra el del token (admin exento) — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
-- [ ] **T19** (~5 min) — `OrderController.getActiveOrders`: el `restaurantId` sale de `req.user` para los roles no admin; solo el admin usa el de la query (400 si el admin no lo envía) — `packages/api/src/controllers/order.controller.ts`
-- [ ] **T20** (~10 min) — `OrderController`: eliminar los `try/catch` que devuelven `error.message`, usar `next(error)`, pasar `requester` desde `req.user` en `getById` y `updateItemStatus` — `packages/api/src/controllers/order.controller.ts`
-- [ ] **T21** (~5 min) — `order.routes.ts`: añadir `authorize` por ruta según la tabla de 4.3 (`POST`, `GET /active` y `PATCH`) — `packages/api/src/routes/order.routes.ts`
+- [x] **T16** (~5 min) — Añadir `OrderNotFoundError` a `NOT_FOUND_ERRORS` para que responda 404; test del `errorHandler` — `packages/api/src/contexts/shared/infrastructure/http/errorHandler.ts`
+- [x] **T17** (~10 min) — `OrderService.getById(orderId, requester)`: admin cualquiera, empleado solo su restaurante, cliente solo si `clientId === requester.id`; si no, `OrderNotFoundError` — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
+- [x] **T18** (~10 min) — `OrderService.updateItemStatus(orderId, itemId, status, requester)`: comprobar el restaurante del pedido contra el del token (admin exento) — `packages/api/src/services/order.service.ts`, `order.service.test.ts`
+- [x] **T19** (~5 min) — `OrderController.getActiveOrders`: el `restaurantId` sale de `req.user` para los roles no admin; solo el admin usa el de la query (400 si el admin no lo envía) — `packages/api/src/controllers/order.controller.ts`
+- [x] **T20** (~10 min) — `OrderController`: eliminar los `try/catch` que devuelven `error.message`, usar `next(error)`, pasar `requester` desde `req.user` en `getById` y `updateItemStatus` — `packages/api/src/controllers/order.controller.ts`
+- [x] **T21** (~5 min) — `order.routes.ts`: añadir `authorize` por ruta según la tabla de 4.3 (`POST`, `GET /active` y `PATCH`) — `packages/api/src/routes/order.routes.ts`
 - [ ] **T22** (~10 min) — Tests HTTP: un cliente recibe 403 en `GET /orders/active` y en el `PATCH`; recibe 404 en `GET /orders/:id` de un pedido ajeno; un empleado de B no ve pedidos de A — `packages/api/src/routes/order.routes.test.ts`
 
 **Rate limiting (A07)**

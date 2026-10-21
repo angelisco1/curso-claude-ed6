@@ -1,10 +1,10 @@
-import type { Request, Response } from 'express'
-import type { OrderService } from '@services/order.service.js'
+import type { Request, Response, NextFunction } from 'express'
+import type { OrderService, OrderRequester } from '@services/order.service.js'
 
 export class OrderController {
     constructor(private readonly orderService: OrderService) {}
 
-    async createOrder(req: Request, res: Response): Promise<void> {
+    async createOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { restaurantId, tableId, items } = req.body
             const user = (req as any).user
@@ -17,17 +17,14 @@ export class OrderController {
             })
             res.status(201).json(order)
         } catch (error) {
-            if (error instanceof Error) {
-                res.status(400).json({ error: error.message })
-            } else {
-                res.status(500).json({ error: 'Internal Server Error' })
-            }
+            next(error)
         }
     }
 
-    async getActiveOrders(req: Request, res: Response): Promise<void> {
+    async getActiveOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { restaurantId } = req.query
+            const user = (req as any).user
+            const restaurantId = user?.role === 'admin' ? req.query.restaurantId : user?.restaurantId
             if (!restaurantId || typeof restaurantId !== 'string') {
                 res.status(400).json({ error: 'restaurantId is required' })
                 return
@@ -36,11 +33,11 @@ export class OrderController {
             const orders = await this.orderService.listActive(restaurantId)
             res.status(200).json(orders)
         } catch (error) {
-            res.status(500).json({ error: 'Internal Server Error' })
+            next(error)
         }
     }
 
-    async getMyOrders(req: Request, res: Response): Promise<void> {
+    async getMyOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const user = (req as any).user
             if (!user?.id) {
@@ -50,37 +47,34 @@ export class OrderController {
             const orders = await this.orderService.getByClientId(user.id)
             res.status(200).json(orders)
         } catch (error) {
-            res.status(500).json({ error: 'Internal Server Error' })
+            next(error)
         }
     }
 
-    async getById(req: Request, res: Response): Promise<void> {
+    async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const order = await this.orderService.getById(req.params.id as string)
+            const order = await this.orderService.getById(req.params.id as string, this.requesterFrom(req))
             res.status(200).json(order)
         } catch (error) {
-            if (error instanceof Error && error.name === 'OrderNotFoundError') {
-                res.status(404).json({ error: error.message })
-            } else {
-                res.status(500).json({ error: 'Internal Server Error' })
-            }
+            next(error)
         }
     }
 
-    async updateItemStatus(req: Request, res: Response): Promise<void> {
+    async updateItemStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const orderId = req.params.orderId as string
             const itemId = req.params.itemId as string
             const { status } = req.body
 
-            await this.orderService.updateItemStatus(orderId, itemId, status)
+            await this.orderService.updateItemStatus(orderId, itemId, status, this.requesterFrom(req))
             res.status(204).send()
         } catch (error) {
-            if (error instanceof Error && (error.name === 'OrderNotFoundError' || error.name === 'InvalidOrderStatusError')) {
-                res.status(400).json({ error: error.message })
-            } else {
-                res.status(500).json({ error: 'Internal Server Error' })
-            }
+            next(error)
         }
+    }
+
+    private requesterFrom(req: Request): OrderRequester {
+        const user = (req as any).user
+        return { id: user.id, role: user.role, restaurantId: user.restaurantId ?? null }
     }
 }
