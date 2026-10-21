@@ -177,7 +177,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 **Rate limiting (A07)**
 
 - [x] **T23** (~5 min) — Instalar `express-rate-limit` como dependencia de `@resttek/api` — `packages/api/package.json`
-- [ ] **T24** (~10 min) — Fábrica `createAuthRateLimiters(options?)` con límites de login (IP + email) y register, 429 con mensaje en español y límites leídos de variables de entorno — `packages/api/src/contexts/shared/infrastructure/http/rateLimit.ts`
+- [x] **T24** (~10 min) — Fábrica `createAuthRateLimiters(options?)` con límites de login (IP + email) y register, 429 con mensaje en español y límites leídos de variables de entorno — `packages/api/src/contexts/shared/infrastructure/http/rateLimit.ts`
 - [ ] **T25** (~5 min) — Aplicar los limitadores a `POST /login` y `POST /register` — `packages/api/src/contexts/employee/infrastructure/http/auth.routes.ts`
 - [ ] **T26** (~10 min) — Test HTTP: el intento N+1 de login devuelve 429; una IP o email distintos no se ven afectados — `packages/api/src/contexts/employee/infrastructure/http/auth.routes.test.ts`
 - [ ] **T27** (~5 min) — `seed.ts`: abortar con mensaje claro si `NODE_ENV === 'production'` — `packages/api/src/scripts/seed.ts`
