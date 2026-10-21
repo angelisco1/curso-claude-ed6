@@ -144,7 +144,7 @@ Cada tarea tiene su test o verificación asociada (TDD: primero el test que fall
 
 - [x] **T1** (~5 min) — Crear `getJwtSecret()`, `JWT_ALGORITHM` y `getAccessTokenExpiresIn()`; lanza si falta `JWT_SECRET` (valor fijo en `NODE_ENV=test`) — `packages/api/src/config/jwt.ts` y `jwt.test.ts`
 - [x] **T2** (~10 min) — `authenticate`: verificar con `algorithms: ['HS256']`, validar forma del payload y tipar `req.user` como `AuthUser` en lugar de `any` — `packages/api/src/contexts/shared/infrastructure/http/middlewares.ts` y `middlewares.test.ts`
-- [ ] **T3** (~5 min) — `BcryptAuthService.generateToken`: usar `getJwtSecret()`, `JWT_ALGORITHM` y `getAccessTokenExpiresIn()` (un único origen del secreto) — `packages/api/src/contexts/employee/infrastructure/BcryptAuthService.ts`
+- [x] **T3** (~5 min) — `BcryptAuthService.generateToken`: usar `getJwtSecret()`, `JWT_ALGORITHM` y `getAccessTokenExpiresIn()` (un único origen del secreto) — `packages/api/src/contexts/employee/infrastructure/BcryptAuthService.ts`
 - [ ] **T4** (~5 min) — `server.ts`: importar `dotenv/config`, llamar a `getJwtSecret()` antes de `listen` y crear `.env.example` con `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS` — `packages/api/src/server.ts`, `packages/api/.env.example`
 
 **Aislamiento por restaurante (A01)**
