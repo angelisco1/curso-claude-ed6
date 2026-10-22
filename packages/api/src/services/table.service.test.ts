@@ -158,4 +158,38 @@ describe('TableService', () => {
             expect(await repo.findById(table.id)).not.toBeNull()
         })
     })
+
+    describe('updateStatus', () => {
+        it('liberar una mesa ocupada suelta al cliente, que puede ocupar otra', async () => {
+            const t1 = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            const t2 = await service.create({ number: 2, capacity: 4, restaurantId: 'A' })
+            await repo.occupyIfFree('A', t1.id, 'cliente-1')
+
+            const liberada = await service.updateStatus('A', t1.id, 'libre')
+
+            expect(liberada).toMatchObject({ status: 'libre', occupiedBy: null })
+            expect(await repo.findById(t1.id)).toEqual(liberada)
+            expect(await repo.occupyIfFree('A', t2.id, 'cliente-1')).toBe(true)
+        })
+
+        it('siempre deja occupiedBy a null, también si el estado no cambia', async () => {
+            const table = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            await repo.occupyIfFree('A', table.id, 'cliente-1')
+            const result = await service.updateStatus('A', table.id, 'ocupada')
+            expect(result).toMatchObject({ status: 'ocupada', occupiedBy: null })
+        })
+
+        it('normaliza el estado y conserva el resto de campos', async () => {
+            const table = await service.create({ number: 5, description: 'Terraza', capacity: 6, restaurantId: 'A' })
+            const result = await service.updateStatus('A', table.id, ' RESERVADA ')
+            expect(result).toMatchObject({ number: 5, description: 'Terraza', capacity: 6, status: 'reservada', createdAt: table.createdAt })
+        })
+
+        it('rechaza estados inválidos o ausentes y mesas de otro restaurante', async () => {
+            const table = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            await expect(service.updateStatus('A', table.id, 'rota')).rejects.toThrow(InvalidTableStatusError)
+            await expect(service.updateStatus('A', table.id, undefined as unknown as string)).rejects.toThrow(InvalidTableStatusError)
+            await expect(service.updateStatus('B', table.id, 'libre')).rejects.toThrow(TableNotFoundError)
+        })
+    })
 })
