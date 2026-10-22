@@ -39,7 +39,17 @@ describe('OrderController.getActiveOrders', () => {
         await controller.getActiveOrders(
             req({ user: { id: 'u1', role: 'admin', restaurantId: null }, query: {} }), res, next)
         expect(res.status).toHaveBeenCalledWith(400)
+        expect(res.json).toHaveBeenCalledWith({ error: 'El restaurantId es obligatorio' })
         expect(service.listActive).not.toHaveBeenCalled()
+    })
+})
+
+describe('OrderController.getMyOrders', () => {
+    it('sin usuario responde 401 con el mensaje en español', async () => {
+        const { controller, res, next } = setup()
+        await controller.getMyOrders(req({}), res, next)
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({ error: 'No autorizado' })
     })
 })
 

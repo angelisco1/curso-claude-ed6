@@ -26,7 +26,7 @@ export class OrderController {
             const user = (req as any).user
             const restaurantId = user?.role === 'admin' ? req.query.restaurantId : user?.restaurantId
             if (!restaurantId || typeof restaurantId !== 'string') {
-                res.status(400).json({ error: 'restaurantId is required' })
+                res.status(400).json({ error: 'El restaurantId es obligatorio' })
                 return
             }
 
@@ -41,7 +41,7 @@ export class OrderController {
         try {
             const user = (req as any).user
             if (!user?.id) {
-                res.status(401).json({ error: 'Unauthorized' })
+                res.status(401).json({ error: 'No autorizado' })
                 return
             }
             const orders = await this.orderService.getByClientId(user.id)

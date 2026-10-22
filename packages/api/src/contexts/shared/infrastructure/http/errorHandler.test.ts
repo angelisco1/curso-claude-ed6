@@ -24,6 +24,6 @@ describe('errorHandler', () => {
     it('responde 500 genérico sin filtrar el mensaje para errores inesperados', () => {
         const res = run(new Error('detalle interno'))
         expect(res.status).toHaveBeenCalledWith(500)
-        expect(res.json).toHaveBeenCalledWith({ error: 'InternalServerError', message: 'Something went wrong' })
+        expect(res.json).toHaveBeenCalledWith({ error: 'InternalServerError', message: 'Algo ha ido mal' })
     })
 })
