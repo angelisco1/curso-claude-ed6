@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core'
+import { SelectedTable } from '../models/table.model'
 
 export interface Dish {
   id: string
@@ -21,9 +22,11 @@ export interface CartItem {
 export class CartStore {
   private readonly _items = signal<CartItem[]>([])
   private readonly _restaurantId = signal<string | null>(null)
+  private readonly _table = signal<SelectedTable | null>(null)
 
   readonly items = this._items.asReadonly()
   readonly restaurantId = this._restaurantId.asReadonly()
+  readonly table = this._table.asReadonly()
 
   readonly total = computed(() =>
     this._items().reduce((sum, item) => sum + item.dish.price * item.quantity, 0)
@@ -74,8 +77,17 @@ export class CartStore {
     this._items.set(items)
   }
 
-  clear(): void {
+  setTable(table: SelectedTable | null): void {
+    this._table.set(table)
+  }
+
+  clearItems(): void {
     this._items.set([])
     this._restaurantId.set(null)
+  }
+
+  clear(): void {
+    this.clearItems()
+    this._table.set(null)
   }
 }
