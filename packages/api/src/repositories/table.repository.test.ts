@@ -108,4 +108,65 @@ describe('SqliteTableRepository (integración)', () => {
             expect(await repo.findByOccupant('nadie')).toBeNull()
         })
     })
+
+    describe('casos límite', () => {
+        beforeAll(async () => {
+            await insertRestaurant(db, 'r-lim')
+            await insertClient(db, 'c-lim-1')
+            await insertClient(db, 'c-lim-2')
+            await insertClient(db, 'c-lim-3')
+            await repo.save(buildTable({ id: 't-lim-1', number: 1, capacity: 6, restaurantId: 'r-lim' }))
+            await repo.save(buildTable({ id: 't-lim-2', number: 2, capacity: 4, restaurantId: 'r-lim' }))
+            await repo.save(buildTable({ id: 't-lim-3', number: 3, capacity: 4, restaurantId: 'r-lim' }))
+            await repo.save(buildTable({ id: 't-lim-4', number: 4, capacity: 8, status: 'reservada', restaurantId: 'r-lim' }))
+            await repo.save(buildTable({ id: 't-lim-5', number: 5, capacity: 2, restaurantId: 'r-lim' }))
+        })
+
+        it('save rechaza un número repetido en el mismo restaurante', async () => {
+            await expect(repo.save(buildTable({ id: 't-lim-dup', number: 1, restaurantId: 'r-lim' }))).rejects.toThrow(/UNIQUE/)
+        })
+
+        it('el mismo número se puede usar en otro restaurante', async () => {
+            await repo.save(buildTable({ id: 't-lim-otro', number: 2, restaurantId: 'r2' }))
+            expect((await repo.findByNumber('r2', 2))?.id).toBe('t-lim-otro')
+        })
+
+        it('findAvailable excluye reservadas e insuficientes y ordena por capacidad y número', async () => {
+            const tables = await repo.findAvailable('r-lim', 3)
+            expect(tables.map(t => t.id)).toEqual(['t-lim-2', 't-lim-3', 't-lim-1'])
+        })
+
+        it('findAvailable no devuelve mesas de otro restaurante', async () => {
+            const tables = await repo.findAvailable('r-lim', 1)
+            expect(tables.every(t => t.restaurantId === 'r-lim')).toBe(true)
+        })
+
+        it('occupyIfFree falla con una mesa reservada', async () => {
+            expect(await repo.occupyIfFree('r-lim', 't-lim-4', 'c-lim-1')).toBe(false)
+        })
+
+        it('occupyIfFree falla si la mesa es de otro restaurante', async () => {
+            expect(await repo.occupyIfFree('r2', 't-lim-1', 'c-lim-1')).toBe(false)
+            expect((await repo.findById('t-lim-1'))?.status).toBe('libre')
+        })
+
+        it('occupyIfFree falla con una mesa ya ocupada por otro cliente', async () => {
+            expect(await repo.occupyIfFree('r-lim', 't-lim-2', 'c-lim-1')).toBe(true)
+            expect(await repo.occupyIfFree('r-lim', 't-lim-2', 'c-lim-2')).toBe(false)
+            expect((await repo.findById('t-lim-2'))?.occupiedBy).toBe('c-lim-1')
+        })
+
+        it('occupyIfFree falla si el cliente ya ocupa otra mesa', async () => {
+            expect(await repo.occupyIfFree('r-lim', 't-lim-3', 'c-lim-1')).toBe(false)
+            expect((await repo.findById('t-lim-3'))?.status).toBe('libre')
+        })
+
+        it('dos ocupaciones simultáneas de la misma mesa: solo gana una', async () => {
+            const resultados = await Promise.all([
+                repo.occupyIfFree('r-lim', 't-lim-5', 'c-lim-2'),
+                repo.occupyIfFree('r-lim', 't-lim-5', 'c-lim-3')
+            ])
+            expect(resultados.filter(Boolean)).toHaveLength(1)
+        })
+    })
 })
