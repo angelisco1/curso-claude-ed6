@@ -57,12 +57,12 @@ describe('IngredientService', () => {
 
         it('should throw IngredientNameRequiredError for empty name', async () => {
             await expect(service.create({ ...validInput, name: '' }))
-                .rejects.toThrow('Ingredient name is required')
+                .rejects.toThrow('El nombre del ingrediente es obligatorio')
         })
 
         it('should throw NegativeStockError for negative stock', async () => {
             await expect(service.create({ ...validInput, currentStock: -1 }))
-                .rejects.toThrow('Stock cannot be negative')
+                .rejects.toThrow('El stock no puede ser negativo')
         })
 
         it('should throw InvalidUnitError for invalid unit', async () => {
@@ -72,7 +72,7 @@ describe('IngredientService', () => {
 
         it('should throw RestaurantIdRequiredError for empty restaurantId', async () => {
             await expect(service.create({ ...validInput, restaurantId: '' }))
-                .rejects.toThrow('Restaurant ID is required')
+                .rejects.toThrow('El ID del restaurante es obligatorio')
         })
 
         it('should allow zero stock', async () => {
@@ -100,7 +100,7 @@ describe('IngredientService', () => {
                 name: 'X',
                 unit: 'kg',
                 currentStock: 0
-            })).rejects.toThrow('Ingredient not found')
+            })).rejects.toThrow('Ingrediente no encontrado')
         })
     })
 
@@ -116,7 +116,7 @@ describe('IngredientService', () => {
 
         it('should throw IngredientNotFoundError for non-existent id', async () => {
             await expect(service.delete('r1', 'non-existent'))
-                .rejects.toThrow('Ingredient not found')
+                .rejects.toThrow('Ingrediente no encontrado')
         })
     })
 

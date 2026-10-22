@@ -45,7 +45,7 @@ describe('Employee Entity (Domain)', () => {
             passwordHash: 'hash',
             role: 'manager',
             restaurantId: null
-        })).toThrow('First name is required')
+        })).toThrow('El nombre es obligatorio')
     })
 
     it('should throw LastNameRequiredError for empty last name', () => {
@@ -57,7 +57,7 @@ describe('Employee Entity (Domain)', () => {
             passwordHash: 'hash',
             role: 'manager',
             restaurantId: null
-        })).toThrow('Last name is required')
+        })).toThrow('Los apellidos son obligatorios')
     })
 
     it('should throw InvalidEmailError for invalid email', () => {
@@ -69,7 +69,7 @@ describe('Employee Entity (Domain)', () => {
             passwordHash: 'hash',
             role: 'manager',
             restaurantId: null
-        })).toThrow('Invalid email format')
+        })).toThrow('Formato de email inválido')
     })
 
     it('should throw PasswordHashRequiredError for empty password hash', () => {
@@ -81,6 +81,6 @@ describe('Employee Entity (Domain)', () => {
             passwordHash: '',
             role: 'manager',
             restaurantId: null
-        })).toThrow('Password hash is required')
+        })).toThrow('El hash de la contraseña es obligatorio')
     })
 })
