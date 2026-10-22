@@ -59,6 +59,10 @@ info:
       JSON se exige un número JSON entero (`"4"` como cadena se rechaza con 400). En la query,
       `people` se parsea desde texto y debe ser un entero en base 10 (`3` válido; `0`, `-1`, `2.5`,
       `abc` o ausente → 400).
+    - **Campos obligatorios ausentes** (`POST` y `PUT` de mesas): si falta `number` o `capacity`
+      (o vale `null`), la respuesta es la misma que si su valor fuese inválido:
+      `400 InvalidTableNumberError` / `400 InvalidTableCapacityError`. No hay un error genérico de
+      "campo obligatorio".
     - **`status`** se normaliza (minúsculas y sin espacios), igual que el estado de los pedidos:
       `"LIBRE "` se acepta como `libre`.
     - **`description`**: opcional; si se omite, es `null` o es una cadena vacía/solo espacios se guarda
@@ -766,14 +770,14 @@ components:
         number:
           type: integer
           minimum: 1
-          description: Obligatorio. Entero ≥ 1, único en el restaurante.
+          description: Obligatorio. Entero ≥ 1, único en el restaurante. Ausente o inválido → 400 `InvalidTableNumberError`.
         description:
           type: [string, 'null']
           description: Opcional. Omitida, `null` o vacía → `null`.
         capacity:
           type: integer
           minimum: 1
-          description: Obligatorio. Entero ≥ 1.
+          description: Obligatorio. Entero ≥ 1. Ausente o inválido → 400 `InvalidTableCapacityError`.
         status:
           $ref: '#/components/schemas/TableStatus'
           description: Opcional. Por defecto `libre`.
@@ -781,7 +785,8 @@ components:
     UpdateTableRequest:
       type: object
       description: |
-        Edición completa (PUT) de los campos editables. `number` y `capacity` obligatorios;
+        Edición completa (PUT) de los campos editables. `number` y `capacity` obligatorios (ausentes
+        → 400 `InvalidTableNumberError` / `InvalidTableCapacityError`);
         `description` opcional (omitida → `null`); `status` opcional (omitido → se conservan el
         estado y el `occupiedBy` actuales; distinto del actual → `occupiedBy = null`).
       required: [number, capacity]
@@ -963,7 +968,9 @@ components:
             message: Mesa no encontrada
 
     TableValidationError:
-      description: Datos de la mesa inválidos.
+      description: |
+        Datos de la mesa inválidos. También se devuelve `InvalidTableNumberError` /
+        `InvalidTableCapacityError` si `number` / `capacity` faltan en el cuerpo o son `null`.
       content:
         application/json:
           schema:
