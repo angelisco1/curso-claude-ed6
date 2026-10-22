@@ -37,6 +37,10 @@ export const routes: Routes = [
             loadChildren: () => import('./features/ingredients/ingredients.routes').then(m => m.INGREDIENT_ROUTES)
           },
           {
+            path: 'tables',
+            loadChildren: () => import('./features/tables/tables.routes').then(m => m.TABLE_ROUTES)
+          },
+          {
             path: 'employees',
             loadChildren: () => import('./features/employees/employees.routes').then(m => m.EMPLOYEE_ROUTES)
           }
