@@ -7,7 +7,8 @@ import {
     InvalidTableStatusError,
     RestaurantIdRequiredError,
     DuplicatedTableNumberError,
-    TableNotFoundError
+    TableNotFoundError,
+    TableOccupiedError
 } from '@errors/DomainErrors.js'
 
 describe('TableService', () => {
@@ -131,6 +132,30 @@ describe('TableService', () => {
             await expect(service.update('A', table.id, { number: 1 } as never)).rejects.toThrow(InvalidTableCapacityError)
             await expect(service.update('A', table.id, { number: 1, capacity: 4, status: 'rota' })).rejects.toThrow(InvalidTableStatusError)
             await expect(service.update('B', table.id, { number: 1, capacity: 4 })).rejects.toThrow(TableNotFoundError)
+        })
+    })
+
+    describe('delete', () => {
+        it('elimina una mesa libre o reservada', async () => {
+            const libre = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            const reservada = await service.create({ number: 2, capacity: 4, status: 'reservada', restaurantId: 'A' })
+            await service.delete('A', libre.id)
+            await service.delete('A', reservada.id)
+            expect(await repo.findById(libre.id)).toBeNull()
+            expect(await repo.findById(reservada.id)).toBeNull()
+        })
+
+        it('rechaza eliminar una mesa ocupada', async () => {
+            const table = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            await repo.occupyIfFree('A', table.id, 'cliente-1')
+            await expect(service.delete('A', table.id)).rejects.toThrow(TableOccupiedError)
+            expect(await repo.findById(table.id)).not.toBeNull()
+        })
+
+        it('no elimina mesas de otro restaurante', async () => {
+            const table = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            await expect(service.delete('B', table.id)).rejects.toThrow(TableNotFoundError)
+            expect(await repo.findById(table.id)).not.toBeNull()
         })
     })
 })
