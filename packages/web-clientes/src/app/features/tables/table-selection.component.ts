@@ -56,6 +56,10 @@ import { Table } from '../../core/models/table.model'
                 </button>
               }
             </div>
+            <button class="btn btn-primary continue-btn" [disabled]="!selected() || occupying()"
+                    (click)="continue()">
+              {{ occupying() ? 'Reservando mesa...' : 'Continuar' }}
+            </button>
           }
         }
       }
@@ -87,6 +91,9 @@ import { Table } from '../../core/models/table.model'
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 16px;
+    }
+    .continue-btn {
+      margin-top: 20px;
     }
     .table-card {
       display: flex;
@@ -124,6 +131,7 @@ export class TableSelectionComponent implements OnInit {
 
   readonly checking = signal(true)
   readonly searching = signal(false)
+  readonly occupying = signal(false)
   readonly searched = signal(false)
   readonly people = signal(2)
   readonly tables = signal<Table[]>([])
@@ -165,6 +173,30 @@ export class TableSelectionComponent implements OnInit {
 
   select(table: Table): void {
     this.selected.set(table)
+  }
+
+  continue(): void {
+    const table = this.selected()
+    if (!table) return
+
+    this.occupying.set(true)
+    this.error.set(null)
+
+    this.tableService.occupy(this.restaurantId, table.id).subscribe({
+      next: (occupied) => {
+        this.cartStore.setTable({ id: occupied.id, number: occupied.number, restaurantId: occupied.restaurantId })
+        this.router.navigate(['/restaurants', this.restaurantId])
+      },
+      error: (err: HttpErrorResponse) => {
+        const message = this.getErrorMessage(err, 'No se ha podido ocupar la mesa')
+        this.occupying.set(false)
+        if (err.error?.error === 'TableNotAvailableError') {
+          // La mesa se ha ocupado entre tanto: se recarga la lista de libres
+          this.search()
+        }
+        this.error.set(message)
+      }
+    })
   }
 
   private checkMyTable(): void {
