@@ -36,6 +36,10 @@
                 <lucide-icon name="package" [size]="14"></lucide-icon>
                 <span>Ingredientes</span>
               </a>
+              <a [routerLink]="['/restaurants', r.id, 'tables']" routerLinkActive="active" class="sub-nav-item">
+                <lucide-icon name="armchair" [size]="14"></lucide-icon>
+                <span>Mesas</span>
+              </a>
               <a [routerLink]="['/restaurants', r.id, 'employees']" routerLinkActive="active" class="sub-nav-item">
                 <lucide-icon name="users" [size]="14"></lucide-icon>
                 <span>Empleados</span>
