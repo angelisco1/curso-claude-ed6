@@ -51,7 +51,7 @@ contexts/employee/
 
 `contexts/shared/` no es un bounded context de negocio: contiene el value object `Email` y los middlewares y el `errorHandler` de Express.
 
-### 2. Por capas → `restaurant`, `dish`, `ingredient`, `order`
+### 2. Por capas → `restaurant`, `dish`, `ingredient`, `order`, `table`
 
 El resto de dominios **no** usan bounded contexts. Se organizan en carpetas transversales por tipo de fichero:
 
@@ -66,7 +66,7 @@ src/
 
 Con un fichero por dominio en cada carpeta: `models/dish.model.ts`, `services/dish.service.ts`, `repositories/dish.repository.ts`, etc.
 
-**Diferencia clave**: aquí no hay entidades de dominio con comportamiento. `Restaurant`, `Dish`, `Ingredient` y `Order` son `interface` planas; la validación vive en los servicios y en funciones sueltas del modelo.
+**Diferencia clave**: aquí no hay entidades de dominio con comportamiento. `Restaurant`, `Dish`, `Ingredient`, `Order` y `Table` son `interface` planas; la validación vive en los servicios y en funciones sueltas del modelo.
 
 ---
 
@@ -262,6 +262,8 @@ La excepción es `employee`: como sus rutas están repartidas en tres ficheros, 
 
 Todos cuelgan de `/api/v1`. La columna **Roles** indica qué valores de `req.user.role` acepta `authorize()`; “autenticado” significa que basta con un JWT válido, sin filtro de rol.
 
+> El contrato completo de las mesas y de la creación de pedidos (esquemas, todas las respuestas y sus mensajes) está en **[`openapi-mesas.yaml`](./openapi-mesas.yaml)** (OpenAPI 3.1), que es la fuente de verdad para los frontends.
+
 ### Públicos (sin autenticación)
 
 | Método | Ruta | Descripción |
@@ -272,6 +274,7 @@ Todos cuelgan de `/api/v1`. La columna **Roles** indica qué valores de `req.use
 | `GET` | `/api/v1/public/restaurants` | Listado de restaurantes para la app de clientes |
 | `GET` | `/api/v1/public/restaurants/:id` | Detalle de restaurante |
 | `GET` | `/api/v1/public/restaurants/:restaurantId/dishes` | Carta pública del restaurante |
+| `GET` | `/api/v1/public/restaurants/:restaurantId/tables/available?people=N` | Mesas `libre` con `capacity >= N`, ordenadas por capacidad y número. Sin `occupiedBy`. `N` entero ≥ 1 (400 si no) |
 
 ### Restaurantes
 
@@ -310,19 +313,47 @@ Todos cuelgan de `/api/v1`. La columna **Roles** indica qué valores de `req.use
 
 Los ingredientes son **más restrictivos** que los platos: solo `admin` puede crear, editar o borrar.
 
+### Mesas
+
+Staff (`routes/table.routes.ts`, todas con `authenticate` + `authorize` + `authorizeRestaurant`):
+
+| Método | Ruta | Roles |
+| --- | --- | --- |
+| `GET` | `/api/v1/restaurants/:restaurantId/tables` | admin, manager, camarero, cocinero |
+| `GET` | `/api/v1/restaurants/:restaurantId/tables/:id` | admin, manager, camarero, cocinero |
+| `POST` | `/api/v1/restaurants/:restaurantId/tables` | admin |
+| `PUT` | `/api/v1/restaurants/:restaurantId/tables/:id` | admin |
+| `DELETE` | `/api/v1/restaurants/:restaurantId/tables/:id` | admin — 204; 409 si la mesa está ocupada |
+| `PATCH` | `/api/v1/restaurants/:restaurantId/tables/:id/status` | admin, manager, camarero — siempre deja `occupiedBy = null` |
+
+Cliente (`routes/table.public.routes.ts`; la respuesta **no** incluye `occupiedBy`):
+
+| Método | Ruta | Roles |
+| --- | --- | --- |
+| `GET` | `/api/v1/public/restaurants/:restaurantId/tables/available?people=N` | ninguno (público) |
+| `GET` | `/api/v1/public/restaurants/:restaurantId/tables/mine` | cliente — la mesa que ocupa en ese restaurante o 404 |
+| `POST` | `/api/v1/public/restaurants/:restaurantId/tables/:id/occupy` | cliente — sin cuerpo; idempotente |
+
+Reglas que aplica `TableService`:
+
+- `number` y `capacity` son enteros ≥ 1 y obligatorios en `POST` y `PUT` (si faltan → 400 `InvalidTableNumberError` / `InvalidTableCapacityError`). El número es único por restaurante (409).
+- `PUT` reemplaza los campos editables; si se omite `status` se conservan estado y ocupante, y si `status` cambia, `occupiedBy` pasa a null.
+- Una mesa por cliente en todo el sistema: `occupy` usa una única sentencia atómica (`occupyIfFree`) que solo ocupa si la mesa está `libre` y el cliente no ocupa otra. Si falla, distingue `ClientAlreadyHasTableError` de `TableNotAvailableError` (ambos 409).
+- Aislamiento: una mesa de otro restaurante se trata como inexistente (404).
+
 ### Pedidos
 
 | Método | Ruta | Roles |
 | --- | --- | --- |
-| `POST` | `/api/v1/orders` | autenticado — el `clientId` se toma del JWT, no del body |
-| `GET` | `/api/v1/orders/active` | autenticado — **requiere `?restaurantId=`** (400 si falta) |
+| `POST` | `/api/v1/orders` | admin, manager, camarero, cliente — el `clientId` se toma del JWT, no del body |
+| `GET` | `/api/v1/orders/active` | admin, manager, camarero, cocinero — el restaurante sale del JWT; el admin debe pasar `?restaurantId=` (400 si falta) |
 | `GET` | `/api/v1/orders/mine` | autenticado — pedidos del usuario del JWT |
-| `GET` | `/api/v1/orders/:id` | autenticado |
-| `PATCH` | `/api/v1/orders/:orderId/items/:itemId/status` | autenticado — devuelve 204 sin cuerpo |
-
-Ninguna ruta de pedidos aplica `authorize()`: cualquier usuario autenticado puede cambiar el estado de cualquier ítem.
+| `GET` | `/api/v1/orders/:id` | autenticado — 404 si no puede verlo |
+| `PATCH` | `/api/v1/orders/:orderId/items/:itemId/status` | admin, manager, camarero, cocinero — devuelve 204 sin cuerpo |
 
 `GET /orders/active` devuelve los pedidos del restaurante que tengan **al menos un ítem** en estado distinto de `entregado`.
+
+**Mesa del pedido**: `tableId` es opcional (omitido o `null` → pedido sin mesa). Si viene, `OrderService.create(request, requester)` comprueba con el `TableRepository` que la mesa existe y es del restaurante del pedido (404 `TableNotFoundError`), que está `ocupada` (409 `TableNotOccupiedError`) y, si quien pide es un `cliente`, que la ocupa él (403 `TableNotAssignedError`). El staff puede pedir para cualquier mesa ocupada del restaurante.
 
 Al crear un pedido, el servicio **expande las cantidades**: un ítem con `quantity: 3` se guarda como 3 filas de `order_items` con `quantity: 1` cada una, para poder seguir el estado de cada unidad por separado.
 
@@ -334,10 +365,11 @@ Definidos en `contexts/shared/infrastructure/http/middlewares.ts`.
 
 | Middleware | Función | Respuesta al fallar |
 | --- | --- | --- |
-| `authenticate` | Verifica el JWT de `Authorization: Bearer <token>` y vuelca el payload en `req.user` | 401 |
-| `authorize(roles)` | Comprueba que `req.user.role` está en la lista | 403 |
+| `authenticate` | Verifica el JWT de `Authorization: Bearer <token>` y vuelca el payload en `req.user` | 401 `{ error: 'No autorizado: no se ha enviado el token' }` (o `token mal formado` / `token inválido`) |
+| `authorize(roles)` | Comprueba que `req.user.role` está en la lista | 403 `{ error: 'Prohibido: permisos insuficientes' }` |
+| `authorizeRestaurant` | Deja pasar al `admin` o a quien tenga `req.user.restaurantId === req.params.restaurantId` | 403 `{ error: 'Prohibido: permisos insuficientes' }` |
 
-Ambos responden directamente, sin pasar por el `errorHandler`.
+Responden directamente, sin pasar por el `errorHandler`, y su cuerpo **solo tiene `error`** (con el texto en español), sin `message`. Los frontends muestran `message ?? error`.
 
 ---
 
@@ -345,15 +377,14 @@ Ambos responden directamente, sin pasar por el `errorHandler`.
 
 Jerarquía: `Error` → `AppError` (abstracta) → errores específicos en `errors/DomainErrors.ts`. `AppError` asigna `this.name = this.constructor.name`, y el `errorHandler` decide el código HTTP a partir de ese nombre:
 
-- **404**: `EmployeeNotFoundError`, `RestaurantNotFoundError`, `IngredientNotFoundError`, `DishNotFoundError`
-- **401**: `InvalidCredentialsError`
-- **400**: cualquier otro `AppError`
-- **500**: errores no controlados
+- **404** (`NOT_FOUND_ERRORS`): `EmployeeNotFoundError`, `RestaurantNotFoundError`, `IngredientNotFoundError`, `DishNotFoundError`, `OrderNotFoundError`, `TableNotFoundError`
+- **401** (`UNAUTHORIZED_ERRORS`): `InvalidCredentialsError`
+- **403** (`FORBIDDEN_ERRORS`): `TableNotAssignedError`
+- **409** (`CONFLICT_ERRORS`): `DuplicatedTableNumberError`, `TableNotAvailableError`, `ClientAlreadyHasTableError`, `TableOccupiedError`, `TableNotOccupiedError`
+- **400**: cualquier otro `AppError` (p. ej. `InvalidTableNumberError`, `InvalidTableCapacityError`, `InvalidTableStatusError`, `InvalidPeopleCountError`)
+- **500**: errores no controlados → `{ error: 'InternalServerError', message: 'Algo ha ido mal' }` (no se filtra el mensaje interno)
 
-Dos excepciones que conviene conocer:
-
-- `OrderNotFoundError` **no** está en la lista de 404. Si llegase al `errorHandler` se traduciría a 400.
-- `OrderController` no delega en el `errorHandler`: es el único controlador que **no llama a `next(error)`**, sino que hace su propio `try/catch` y construye la respuesta a mano. Por eso `GET /orders/:id` sí devuelve 404, pero el `PATCH` de estado devuelve 400 para el mismo error.
+La respuesta es `{ error: err.name, message: err.message }`. **Los mensajes están en español** (todos los de `DomainErrors.ts`, los de los modelos y `Role`, y los textos inline de middlewares y controladores); el campo `error` es el nombre de la clase y no se traduce, porque es un identificador estable que la UI puede usar para decidir qué hacer. Al añadir un error nuevo, escribe su mensaje en español.
 
 ---
 
@@ -400,6 +431,7 @@ La ruta del fichero se decide en el constructor: `:memory:` si `NODE_ENV=test`, 
 Con **Vitest** (`npm test` desde la raíz, o `npm run test:watch` dentro de `packages/api`). Los tests son unitarios y conviven con el código que prueban:
 
 - Dominio y casos de uso de `employee`, con dobles en `contexts/employee/application/mocks/`
-- Servicios y repositorios de `restaurant`, `ingredient` y `order`, con dobles en `repositories/mocks/`
+- Servicios y repositorios por capas (`restaurant`, `dish`, `ingredient`, `order`, `table`), con dobles en `repositories/mocks/` y repositorios SQLite probados en memoria
+- Controladores, middlewares y `errorHandler`, con `req`/`res` simulados
 
-**No hay tests de integración HTTP.** `supertest` figura como dependencia de desarrollo pero no se usa en ningún test, así que las rutas, los middlewares y el `errorHandler` no están cubiertos.
+Además hay **tests de integración HTTP** con `supertest` contra `app.ts` (p. ej. `routes/order.routes.test.ts`, `routes/table.routes.test.ts`, `routes/table.public.routes.test.ts` y el recorrido completo `routes/table.flow.test.ts`). Usan los helpers de `src/test/http-helpers.ts`: `setupTestDatabase`, `tokenFor`, `bearer`, `seedTwoRestaurants`, `createClient` (inserta un cliente real, necesario por la FK de `occupied_by`) e `insertTable`.
