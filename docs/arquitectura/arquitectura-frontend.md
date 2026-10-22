@@ -65,6 +65,23 @@ src/app/
 
 Ninguna de las tres aplicaciones tiene carpeta `shared/` propia: lo compartido vive en `@resttek/web-shared`.
 
+#### Selección de mesa (web-clientes)
+
+Antes de ver la carta, el cliente debe tener una mesa ocupada en el restaurante. El flujo vive en `features/tables/table-selection.component.ts` (ruta `restaurants/:id/table`) y usa `core/services/table.service.ts` y `core/models/table.model.ts`:
+
+1. `restaurant-list` enlaza a `restaurants/:id/table`, no directamente a la carta.
+2. Al entrar, el componente llama a `TableService.getMine`. Si el cliente ya ocupa una mesa en ese restaurante (200), la guarda en el `CartStore` y salta a la carta. Un 404 significa que aún no tiene mesa; cualquier otro error se muestra.
+3. Si no la tiene, el cliente indica los comensales y `TableService.getAvailable` lista las mesas libres con capacidad suficiente. Al elegir una y pulsar *Continuar* se llama a `occupy`, se guarda la mesa con `CartStore.setTable({ id, number, restaurantId })` y se navega a la carta.
+4. Los errores 409 de `occupy` se distinguen por el campo `error` de la respuesta, no por el texto: con `TableNotAvailableError` se recarga la lista de mesas libres y con `ClientAlreadyHasTableError` se muestra el aviso de que el camarero debe liberar la mesa anterior. En ambos casos se muestra el `message` de la API.
+
+El `CartStore` guarda la mesa en un signal `table` independiente de los ítems:
+
+- `clearItems()` vacía los ítems y conserva la mesa, para poder hacer más rondas de pedidos. Es lo que usa `confirmOrder`.
+- `clear()` vacía ítems y mesa.
+- El estado vive solo en memoria: al recargar la página se pierde, y `getMine` la recupera al volver a la selección.
+
+La carta (`restaurant-menu`) redirige a la selección si la mesa del `CartStore` no es del restaurante visitado, y muestra "Mesa N". `confirmOrder` envía el `tableId` en `POST /orders`. Si la API responde `TableNotFoundError`, `TableNotOccupiedError` o `TableNotAssignedError` (p. ej. el personal liberó la mesa), se olvida la mesa y se vuelve a la selección con el `message`. El resto de errores se muestran tal cual en el carrito, leyendo `message ?? error` porque los middlewares de autenticación devuelven solo `error`.
+
 ---
 
 ## Gestión de Estado: el patrón Store
