@@ -111,3 +111,40 @@ describe('TableController (cliente)', () => {
         expect(res.json).toHaveBeenCalledWith(mesaPublica)
     })
 })
+
+describe('TableController (errores y cuerpos ausentes)', () => {
+    it.each([
+        ['create', 'create'],
+        ['getAll', 'findByRestaurantId'],
+        ['getById', 'findById'],
+        ['update', 'update'],
+        ['delete', 'delete'],
+        ['updateStatus', 'updateStatus'],
+        ['getAvailable', 'findAvailable'],
+        ['getMine', 'findMine'],
+        ['occupy', 'occupy']
+    ] as const)('%s delega el error en next sin responder', async (metodo, metodoServicio) => {
+        const { service, controller, res, next } = setup()
+        const error = new Error('fallo')
+        service[metodoServicio].mockRejectedValue(error)
+        await controller[metodo](req({ params: { restaurantId: 'A', id: 't1' }, user: { id: 'c1', role: 'cliente', restaurantId: null } }), res, next)
+        expect(next).toHaveBeenCalledWith(error)
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    it('create y updateStatus sin cuerpo llegan al servicio con campos undefined (que valida él)', async () => {
+        const { service, controller, res, next } = setup()
+        await controller.create(req({ params: { restaurantId: 'A' }, body: undefined }), res, next)
+        await controller.updateStatus(req({ params: { restaurantId: 'A', id: 't1' }, body: undefined }), res, next)
+        expect(service.create).toHaveBeenCalledWith({ number: undefined, description: undefined, capacity: undefined, status: undefined, restaurantId: 'A' })
+        expect(service.updateStatus).toHaveBeenCalledWith('A', 't1', undefined)
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it('la respuesta de staff solo incluye los campos del contrato', async () => {
+        const { service, controller, res, next } = setup()
+        service.findById.mockResolvedValue({ ...mesa, extra: 'no' })
+        await controller.getById(req({ params: { restaurantId: 'A', id: 't1' } }), res, next)
+        expect(res.json).toHaveBeenCalledWith(mesa)
+    })
+})
