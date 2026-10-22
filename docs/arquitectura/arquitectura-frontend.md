@@ -336,6 +336,19 @@ export class ShellComponent {
 
 El rol de gerente es `'manager'`, no `'gerente'`. La autorización real es responsabilidad de la API.
 
+#### Página "Mesas" (web-empleados)
+
+La ruta `/mesas` está visible para `camarero` y `manager` mediante `canSeeMesas` en el `ShellComponent` (enlace "Mesas" en el menú lateral). Vive en `features/tables/` y sigue el patrón de `features/orders/`:
+
+- `TableService` llama a `GET /restaurants/:restaurantId/tables` y a `PATCH /restaurants/:restaurantId/tables/:id/status`, usando el `restaurantId` del usuario autenticado.
+- `TableStore` guarda las mesas en signals, las recarga cada 30 s (`startPolling` / `stopPolling`, igual que `OrderStore`) y expone `tableNumberById`, un `computed` que traduce el id de una mesa a su número.
+- `MesasComponent` pinta una tarjeta por mesa con su número, capacidad y estado, un `<select>` para cambiarlo y un botón "Liberar" en las mesas ocupadas. Liberar es un `PATCH` con `status: 'libre'`. La respuesta de la API sustituye a la mesa en el store, sin recargar la lista.
+- En cada mesa `ocupada` se muestran los pedidos de `OrderStore.orders()` cuyo `tableId` coincide con el `id` de la mesa, con el estado de cada ítem. Si no hay ninguno, aparece "Sin pedidos activos". La API solo devuelve pedidos con algún ítem sin entregar.
+- No se muestra qué cliente ocupa la mesa: si el personal la marca como `ocupada` a mano, `occupiedBy` es `null`.
+- Los errores se leen como `error.error.message ?? error.error.error`, porque los errores de dominio llevan `message` y los de los middlewares de autenticación solo `error`.
+
+La página `salon` usa `tableNumberById` para mostrar "Mesa N". Los pedidos anteriores a esta funcionalidad pueden tener un `tableId` que no es el id de ninguna mesa (por ejemplo `"5"`), y en ese caso se muestra tal cual.
+
 ---
 
 ## Configuración de Angular
