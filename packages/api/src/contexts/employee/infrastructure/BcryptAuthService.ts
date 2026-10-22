@@ -1,8 +1,8 @@
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { getJwtSecret, getAccessTokenExpiresIn, JWT_ALGORITHM } from '@config/jwt.js'
 import type { IAuthService } from '@employee/domain/IAuthService.js'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-resttek-key'
 const SALT_ROUNDS = 10
 
 export class BcryptAuthService implements IAuthService {
@@ -15,6 +15,6 @@ export class BcryptAuthService implements IAuthService {
     }
 
     generateToken(payload: any): string {
-        return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' })
+        return jwt.sign(payload, getJwtSecret(), { algorithm: JWT_ALGORITHM, expiresIn: getAccessTokenExpiresIn() })
     }
 }

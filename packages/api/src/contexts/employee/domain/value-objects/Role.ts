@@ -2,7 +2,7 @@ import { InvalidRoleError } from '@errors/DomainErrors.js'
 
 export type EmployeeRoleType = 'admin' | 'manager' | 'camarero' | 'cocinero' | 'cliente'
 
-const VALID_ROLES = ['admin', 'manager', 'camarero', 'cocinero', 'cliente']
+export const VALID_ROLES: readonly string[] = ['admin', 'manager', 'camarero', 'cocinero', 'cliente']
 
 export class Role {
     private readonly value: EmployeeRoleType
