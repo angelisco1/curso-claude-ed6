@@ -85,3 +85,31 @@ export const seedTwoRestaurants = async (): Promise<SeededRestaurants> => {
         ingredientB: await insertIngredient(restaurantB)
     }
 }
+
+/**
+ * Inserta un cliente en `employees` (la ocupación de mesas tiene FK a esa tabla)
+ * y devuelve su id y la cabecera `Authorization` lista para usar.
+ */
+export const createClient = async (): Promise<{ id: string; auth: string }> => {
+    const id = randomUUID()
+    await dbConfig.run(
+        'INSERT INTO employees (id, first_name, last_name, email, password_hash, role, restaurant_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, 'Cliente', 'Prueba', `${id}@test.com`, 'hash', 'cliente', null]
+    )
+    return { id, auth: bearer(tokenFor({ role: 'cliente', id })) }
+}
+
+/** Inserta una mesa directamente en la BD y devuelve su id. */
+export const insertTable = async (
+    restaurantId: string,
+    props: { number: number; capacity?: number; status?: string; occupiedBy?: string | null }
+): Promise<string> => {
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    await dbConfig.run(
+        `INSERT INTO restaurant_tables (id, number, description, capacity, status, occupied_by, restaurant_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, props.number, null, props.capacity ?? 4, props.status ?? 'libre', props.occupiedBy ?? null, restaurantId, now, now]
+    )
+    return id
+}

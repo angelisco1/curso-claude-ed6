@@ -69,3 +69,24 @@ describe('DishService (aislamiento por restaurante)', () => {
         })
     })
 })
+
+describe('DishService (mensajes de error en español)', () => {
+    const service = new DishService(new MockDishRepository())
+    const base = { name: 'Paella', description: null, price: 12, category: 'principal', available: true, restaurantId: 'A', ingredients: [] }
+
+    it('nombre vacío', async () => {
+        await expect(service.create({ ...base, name: ' ' })).rejects.toThrow('El nombre del plato es obligatorio')
+    })
+
+    it('precio no positivo', async () => {
+        await expect(service.create({ ...base, price: 0 })).rejects.toThrow('El precio debe ser un número positivo')
+    })
+
+    it('categoría inválida', async () => {
+        await expect(service.create({ ...base, category: 'sopa' })).rejects.toThrow('Categoría inválida: sopa')
+    })
+
+    it('plato inexistente', async () => {
+        await expect(service.findById('A', 'no-existe')).rejects.toThrow('Plato no encontrado')
+    })
+})

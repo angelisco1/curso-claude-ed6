@@ -16,12 +16,12 @@ export interface Ingredient {
 
 export function normalizeIngredientUnit(value: string): IngredientUnitType {
     if (!value || typeof value !== 'string') {
-        throw new InvalidUnitError('Unit must be provided')
+        throw new InvalidUnitError('La unidad es obligatoria')
     }
 
     const normalizedValue = value.trim().toLowerCase()
     if (!VALID_UNITS.includes(normalizedValue as IngredientUnitType)) {
-        throw new InvalidUnitError(`Invalid unit: ${value}. Must be one of: ${VALID_UNITS.join(', ')}`)
+        throw new InvalidUnitError(`Unidad inválida: ${value}. Debe ser una de: ${VALID_UNITS.join(', ')}`)
     }
     return normalizedValue as IngredientUnitType
 }

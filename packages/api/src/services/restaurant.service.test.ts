@@ -40,27 +40,27 @@ describe('RestaurantService', () => {
 
         it('should throw RestaurantNameRequiredError for empty name', async () => {
             await expect(service.create({ ...validDTO, name: '' }))
-                .rejects.toThrow('Restaurant name is required')
+                .rejects.toThrow('El nombre del restaurante es obligatorio')
         })
 
         it('should throw RestaurantAddressRequiredError for empty address', async () => {
             await expect(service.create({ ...validDTO, address: '' }))
-                .rejects.toThrow('Restaurant address is required')
+                .rejects.toThrow('La dirección del restaurante es obligatoria')
         })
 
         it('should throw InvalidEmailError for invalid email', async () => {
             await expect(service.create({ ...validDTO, email: 'bad' }))
-                .rejects.toThrow('Invalid email format')
+                .rejects.toThrow('Formato de email inválido')
         })
 
         it('should throw InvalidPhoneError for invalid phone', async () => {
             await expect(service.create({ ...validDTO, phone: 'abc' }))
-                .rejects.toThrow('Invalid phone format')
+                .rejects.toThrow('Formato de teléfono inválido')
         })
 
         it('should throw InvalidPhoneError for empty phone', async () => {
             await expect(service.create({ ...validDTO, phone: '' }))
-                .rejects.toThrow('Invalid phone format')
+                .rejects.toThrow('Formato de teléfono inválido')
         })
 
         it('should accept a phone with country code', async () => {
@@ -75,12 +75,12 @@ describe('RestaurantService', () => {
 
         it('should throw OwnerFirstNameRequiredError for empty owner first name', async () => {
             await expect(service.create({ ...validDTO, ownerFirstName: '' }))
-                .rejects.toThrow('Owner first name is required')
+                .rejects.toThrow('El nombre del propietario es obligatorio')
         })
 
         it('should throw OwnerLastNameRequiredError for empty owner last name', async () => {
             await expect(service.create({ ...validDTO, ownerLastName: '' }))
-                .rejects.toThrow('Owner last name is required')
+                .rejects.toThrow('Los apellidos del propietario son obligatorios')
         })
     })
 
@@ -97,7 +97,7 @@ describe('RestaurantService', () => {
 
         it('should throw RestaurantNotFoundError for non-existent id', async () => {
             await expect(service.update('non-existent', validDTO))
-                .rejects.toThrow('Restaurant not found')
+                .rejects.toThrow('Restaurante no encontrado')
         })
     })
 
@@ -111,7 +111,7 @@ describe('RestaurantService', () => {
 
         it('should throw RestaurantNotFoundError for non-existent id', async () => {
             await expect(service.getById('non-existent'))
-                .rejects.toThrow('Restaurant not found')
+                .rejects.toThrow('Restaurante no encontrado')
         })
 
         it('should get all restaurants', async () => {

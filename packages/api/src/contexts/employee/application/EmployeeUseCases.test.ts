@@ -57,7 +57,7 @@ describe('Employee Application Use Cases', () => {
                 passwordPlain: 'pass2',
                 role: 'camarero',
                 restaurantId: 'r1'
-            })).rejects.toThrow('Email is already in use')
+            })).rejects.toThrow('El email ya está en uso')
         })
     })
 
@@ -87,7 +87,7 @@ describe('Employee Application Use Cases', () => {
             await expect(loginUseCase.execute({
                 email: 'nobody@resttek.com',
                 passwordRaw: 'password123'
-            })).rejects.toThrow('Invalid credentials')
+            })).rejects.toThrow('Credenciales inválidas')
         })
 
         it('should throw InvalidCredentialsError for wrong password', async () => {
@@ -105,7 +105,7 @@ describe('Employee Application Use Cases', () => {
             await expect(loginUseCase.execute({
                 email: 'admin@resttek.com',
                 passwordRaw: 'wrongpassword'
-            })).rejects.toThrow('Invalid credentials')
+            })).rejects.toThrow('Credenciales inválidas')
         })
     })
 })
