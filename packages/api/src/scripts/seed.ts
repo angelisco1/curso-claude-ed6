@@ -3,6 +3,7 @@ import { dbConfig } from '@config/database.js'
 import { BcryptAuthService } from '@employee/infrastructure/BcryptAuthService.js'
 import { SqliteEmployeeRepository } from '@employee/infrastructure/SqliteEmployeeRepository.js'
 import { Employee } from '@employee/domain/Employee.js'
+import { seedTables, SEED_OCCUPIED_TABLE_ID } from './seed-tables.js'
 
 const seed = async () => {
     if (process.env.NODE_ENV === 'production') {
@@ -164,11 +165,14 @@ const seed = async () => {
 
         console.log('Restaurant 2 dishes created: 1 dish + 1 drink')
 
+        await seedTables(dbConfig)
+        console.log('Tables created.')
+
         const order1Id = randomUUID()
         await dbConfig.run(`
             INSERT OR IGNORE INTO orders (id, restaurant_id, table_id, client_id, created_at)
             VALUES (?, ?, ?, ?, ?)
-        `, [order1Id, 'rest-1', '5', null, new Date().toISOString()])
+        `, [order1Id, 'rest-1', SEED_OCCUPIED_TABLE_ID, null, new Date().toISOString()])
 
         for (let i = 0; i < 2; i++) {
             await dbConfig.run(`
