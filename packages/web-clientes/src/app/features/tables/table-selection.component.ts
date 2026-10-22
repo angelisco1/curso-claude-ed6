@@ -140,6 +140,8 @@ export class TableSelectionComponent implements OnInit {
 
   ngOnInit(): void {
     this.restaurantId = this.route.snapshot.paramMap.get('id')!
+    // Mensaje enviado por otra pantalla (p. ej. el carrito cuando la mesa deja de ser válida)
+    this.error.set(history.state?.message ?? null)
     this.checkMyTable()
   }
 
