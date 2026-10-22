@@ -12,8 +12,9 @@ Resttek: plataforma de gestión de restaurantes. Monorepo con **npm workspaces**
 - `npm run dev:api`: API en :3000 con `tsx watch` (`/health` para comprobarla).
 - `npm run dev:admin` / `dev:empleados` / `dev:clientes`: cada frontend con `ng serve` y proxy de `/api` → `http://localhost:3000` (`proxy.conf.json`).
 - `npm run seed`: puebla la BD (usa `INSERT OR IGNORE`, es idempotente). La contraseña de cada usuario de prueba es su propio email (p. ej. `admin@resttek.com`).
-- `npm test`: tests de la API (Vitest). Solo la API tiene tests; los frontends no tienen script de test.
+- `npm test`: tests de la API (Vitest). Los tests de `web-admin` se lanzan aparte con `npm test -w @resttek/web-admin` (`ng test --watch=false`, builder `@angular/build:unit-test` con Vitest y jsdom; specs `*.spec.ts` junto al código). `web-empleados` y `web-clientes` aún no tienen tests.
 - Un solo test: `cd packages/api && npx vitest run src/services/order.service.test.ts` (o `-t "nombre del test"`). Modo watch: `npm run test:watch` en `packages/api`.
+- Un solo spec de `web-admin`: `cd packages/web-admin && npx ng test --watch=false --include src/app/features/tables/store/table.store.spec.ts`.
 - Build de un frontend: `npm run build -w @resttek/web-admin` (análogo para los otros).
 
 ## Arquitectura de la API (`packages/api/src`)
