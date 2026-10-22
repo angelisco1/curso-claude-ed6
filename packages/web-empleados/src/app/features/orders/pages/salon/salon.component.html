@@ -22,7 +22,7 @@
           <div class="order-header">
             <span class="order-id">Pedido #{{ order.id.substring(0, 8) }}</span>
             @if (order.tableId) {
-              <span class="table-badge table-highlight">Mesa {{ order.tableId }}</span>
+              <span class="table-badge table-highlight">Mesa {{ tableLabel(order.tableId) }}</span>
             }
           </div>
           <div class="order-items">

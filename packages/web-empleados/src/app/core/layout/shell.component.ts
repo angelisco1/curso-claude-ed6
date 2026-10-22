@@ -31,6 +31,10 @@ export class ShellComponent {
     this.userRole() === 'camarero' || this.userRole() === 'manager'
   )
 
+  readonly canSeeMesas = computed(() => 
+    this.userRole() === 'camarero' || this.userRole() === 'manager'
+  )
+
   readonly defaultRoute = computed(() => {
     const role = this.userRole()
     if (role === 'cocinero') return '/cocina'
