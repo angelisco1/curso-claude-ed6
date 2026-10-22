@@ -41,6 +41,27 @@ src/app/
         └── store/         → Estado con signals
 ```
 
+#### Gestión de mesas (web-admin)
+
+La feature `features/tables/` sigue el patrón de `ingredients` y da de alta, edita y elimina las mesas de cada restaurante:
+
+```
+features/tables/
+├── tables.routes.ts       → TABLE_ROUTES: '', 'new' y ':id/edit'
+├── models/table.model.ts  → Table, TableStatus (libre | ocupada | reservada), CreateTableDto, UpdateTableDto
+├── services/table.service.ts → getAll, getById, create, update, delete (/restaurants/:id/tables)
+├── store/table.store.ts   → Signals tables, loading y error; create/update/delete con firstValueFrom
+└── pages/
+    ├── table-list/        → Tabla con número, descripción, capacidad y badge de estado; editar y eliminar con confirmación
+    └── table-form/        → Alta y edición (número y capacidad enteros ≥ 1, descripción y estado)
+```
+
+- **Ruta**: `restaurants/:restaurantId/tables`, cargada en `app.routes.ts` con `loadChildren`. Se enlaza desde el submenú del restaurante en el shell y desde el panel del restaurante.
+- **Estado de la mesa**: el modelo `Table` incluye `occupiedBy`, que la API solo devuelve al personal. Crear, editar y eliminar mesas está restringido a `admin` en la API; `web-admin` no comprueba el rol en el cliente.
+- **Errores de la API**: se muestra `message` (o `error` si falta) del cuerpo de la respuesta. Así se muestran los 409 de número duplicado y de borrado de una mesa ocupada.
+- **Cambio de estado de una mesa ocupada**: el formulario pide confirmación antes de guardar, porque la API pone `occupiedBy` a `null` y el cliente queda suelto.
+- **Icono**: `armchair` de Lucide, registrado en `app.config.ts`.
+
 ### `web-clientes`
 
 Es más pequeña y centraliza modelos y servicios en `core/` en vez de repartirlos por feature. Sus features son componentes sueltos, sin subcarpetas:
