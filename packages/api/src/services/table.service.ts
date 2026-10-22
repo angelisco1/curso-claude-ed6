@@ -8,7 +8,8 @@ import {
     RestaurantIdRequiredError,
     DuplicatedTableNumberError,
     TableNotFoundError,
-    TableOccupiedError
+    TableOccupiedError,
+    InvalidPeopleCountError
 } from '@errors/DomainErrors.js'
 
 export interface CreateTableDTO {
@@ -103,6 +104,18 @@ export class TableService {
         return this.tableRepository.findByRestaurantId(restaurantId)
     }
 
+    async findAvailable(restaurantId: string, people: unknown): Promise<Table[]> {
+        return this.tableRepository.findAvailable(restaurantId, parsePeople(people))
+    }
+
+    async findMine(restaurantId: string, clientId: string): Promise<Table> {
+        const table = await this.tableRepository.findByOccupant(clientId)
+        if (!table || table.restaurantId !== restaurantId) {
+            throw new TableNotFoundError()
+        }
+        return table
+    }
+
     private async ensureNumberIsFree(table: Table): Promise<void> {
         const existing = await this.tableRepository.findByNumber(table.restaurantId, table.number)
         if (existing && existing.id !== table.id) {
@@ -153,4 +166,12 @@ function isPositiveInteger(value: unknown): boolean {
 function normalizeDescription(value: string | null): string | null {
     if (typeof value !== 'string' || value.trim() === '') return null
     return value.trim()
+}
+
+function parsePeople(value: unknown): number {
+    const people = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value
+    if (!isPositiveInteger(people)) {
+        throw new InvalidPeopleCountError()
+    }
+    return people as number
 }
