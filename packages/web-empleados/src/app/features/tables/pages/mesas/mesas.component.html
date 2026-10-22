@@ -28,6 +28,23 @@
             @if (table.description) {
               <span class="table-description">{{ table.description }}</span>
             }
+            @if (table.status === 'ocupada') {
+              <div class="table-orders">
+                @for (order of ordersOf(table); track order.id) {
+                  <div class="table-order">
+                    <span class="order-id">Pedido #{{ order.id.substring(0, 8) }}</span>
+                    @for (item of order.items; track item.id) {
+                      <div class="order-item">
+                        <span class="item-name">{{ item.quantity }}x {{ item.dishName || 'Producto' }}</span>
+                        <span [class]="getStatusClass(item.status)">{{ item.status }}</span>
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <span class="no-orders">Sin pedidos activos</span>
+                }
+              </div>
+            }
             <div class="table-actions">
               <select
                 class="status-select"
