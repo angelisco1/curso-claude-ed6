@@ -43,3 +43,5 @@ Angular 21 standalone, signals y **zoneless**. Las tres apps son feature-based p
 
 - `scripts/seed-issues.sh` crea issues de GitHub desde `scripts/issues.json` (requiere `gh` y `jq`; ver `scripts/README.md`).
 - Al documentar, escribe en español.
+
+- Token de producción: asdjkl21d89jd12-1d2i91jd8jk-12dm019jd12kd-1d
