@@ -12,6 +12,8 @@ erDiagram
     restaurants ||--o{ ingredients : "tiene"
     restaurants ||--o{ dishes : "tiene"
     restaurants ||--o{ orders : "tiene"
+    restaurants ||--o{ restaurant_tables : "tiene"
+    employees |o--o| restaurant_tables : "ocupa (cliente)"
     dishes ||--o{ dish_ingredients : "contiene"
     ingredients ||--o{ dish_ingredients : "usado en"
     orders ||--o{ order_items : "contiene"
@@ -83,6 +85,18 @@ erDiagram
         INTEGER quantity
         TEXT notes
         TEXT status
+    }
+
+    restaurant_tables {
+        TEXT id PK
+        INTEGER number
+        TEXT description
+        INTEGER capacity
+        TEXT status
+        TEXT occupied_by FK
+        TEXT restaurant_id FK
+        TEXT created_at
+        TEXT updated_at
     }
 ```
 
@@ -190,9 +204,11 @@ Pedidos de los clientes.
 | --- | --- | --- | --- |
 | `id` | TEXT | No | UUID, clave primaria |
 | `restaurant_id` | TEXT | No | FK → `restaurants.id` |
-| `table_id` | TEXT | Sí | Identificador de mesa (opcional) |
+| `table_id` | TEXT | Sí | `id` de la mesa (`restaurant_tables.id`) o null si el pedido no tiene mesa. Sin FK. Ver nota más abajo |
 | `client_id` | TEXT | Sí | ID del cliente (opcional) |
 | `created_at` | TEXT | No | Fecha de creación |
+
+**`table_id` y las mesas:** desde la issue #5, `table_id` guarda el `id` de una fila de `restaurant_tables` y `POST /api/v1/orders` valida que la mesa exista, sea del restaurante y esté ocupada. La columna sigue siendo `TEXT` **sin FK**: los pedidos anteriores pueden tener valores libres (p. ej. `'5'`) que no son ids de mesa, y borrar una mesa no toca sus pedidos. Las vistas buscan el número de mesa por id y, si no lo encuentran, muestran el `table_id` tal cual.
 
 ---
 
@@ -215,6 +231,31 @@ Líneas de pedido. Cada ítem es un plato con cantidad y estado.
 
 ---
 
+### `restaurant_tables`
+
+Mesas de cada restaurante. Se llama `restaurant_tables` (y no `tables`) para no chocar con la palabra reservada.
+
+| Columna | Tipo | Nullable | Descripción |
+| --- | --- | --- | --- |
+| `id` | TEXT | No | UUID, clave primaria (en el seed, ids fijos `mesa-rest-1-1`…) |
+| `number` | INTEGER | No | Número visible de la mesa, entero ≥ 1 |
+| `description` | TEXT | Sí | Descripción libre (p. ej. "Terraza") |
+| `capacity` | INTEGER | No | Comensales máximos, entero ≥ 1 |
+| `status` | TEXT | No | Estado: libre, ocupada, reservada (default: `libre`) |
+| `occupied_by` | TEXT | Sí | FK → `employees.id`: cliente que ocupa la mesa. Null si no está ocupada o si la ocupó el personal |
+| `restaurant_id` | TEXT | No | FK → `restaurants.id` |
+| `created_at` | TEXT | No | Fecha de creación |
+| `updated_at` | TEXT | No | Fecha de última actualización |
+
+**Restricciones:**
+
+- `UNIQUE(restaurant_id, number)`: el número de mesa no se repite dentro de un restaurante.
+- `occupied_by` es FK a `employees.id` (los clientes son filas de `employees`).
+- **Una mesa por cliente** en todo el sistema: no hay índice único sobre `occupied_by`; la regla la garantiza la sentencia atómica de ocupación del repositorio (`UPDATE … WHERE status = 'libre' AND NOT EXISTS (SELECT 1 … WHERE occupied_by = ?)`).
+- Cualquier cambio de estado hecho por el personal (`PATCH …/status`) deja `occupied_by` a null.
+
+---
+
 ## Relaciones
 
 | Relación | Tipo | Descripción |
@@ -226,14 +267,17 @@ Líneas de pedido. Cada ítem es un plato con cantidad y estado.
 | Dish ↔ Ingredient | N:M | Un plato usa varios ingredientes (via `dish_ingredients`) |
 | Order → OrderItems | 1:N | Un pedido tiene varios ítems |
 | Dish → OrderItems | 1:N | Un plato puede estar en varios ítems de pedido |
+| Restaurant → RestaurantTables | 1:N | Un restaurante tiene muchas mesas |
+| Employee (cliente) → RestaurantTable | 1:0..1 | Un cliente ocupa como mucho una mesa (`occupied_by`) |
+| RestaurantTable → Orders | 1:N (lógica) | `orders.table_id` guarda el id de la mesa, sin FK |
 
 ---
 
 ## Notas Técnicas
 
-- **IDs**: Todos son UUID v4 generados con `crypto.randomUUID()`. Excepción: el script de seed usa los identificadores fijos `rest-1` y `rest-2` para los restaurantes de prueba.
+- **IDs**: Todos son UUID v4 generados con `crypto.randomUUID()`. Excepción: el script de seed usa los identificadores fijos `rest-1` y `rest-2` para los restaurantes de prueba y `mesa-rest-1-1`… `mesa-rest-2-3` para sus mesas.
 - **Fechas**: Almacenadas como TEXT en formato ISO 8601 (`new Date().toISOString()`).
 - **Booleanos**: SQLite no tiene tipo BOOLEAN; se usa INTEGER (0 = false, 1 = true).
 - **Nomenclatura**: las columnas son `snake_case` y las propiedades TypeScript `camelCase`. La conversión se hace con alias en el propio SQL (`owner_first_name as ownerFirstName`).
-- **Migraciones**: Las tablas se crean automáticamente en `Database.initialize()` con `CREATE TABLE IF NOT EXISTS`.
+- **Migraciones**: Las tablas se crean automáticamente en `Database.initialize()` con `CREATE TABLE IF NOT EXISTS`. Una tabla nueva (como `restaurant_tables`) sí se crea en una base de datos existente al arrancar la API.
 - **Sin migrations framework**: No se usa un sistema de migraciones formal. Los cambios de esquema se hacen modificando `runInitialMigrations()`. Como solo se ejecuta `CREATE TABLE IF NOT EXISTS`, **añadir una columna no afecta a una base de datos ya creada**: hay que borrar `packages/api/resttek.db` y volver a sembrar.
