@@ -83,3 +83,31 @@ describe('TableController (staff)', () => {
         expect(res.json).toHaveBeenCalledWith(mesa)
     })
 })
+
+describe('TableController (cliente)', () => {
+    const { occupiedBy: _omitido, ...mesaPublica } = mesa
+
+    it('getAvailable pasa la query people sin transformar y responde sin occupiedBy', async () => {
+        const { service, controller, res, next } = setup()
+        await controller.getAvailable(req({ params: { restaurantId: 'A' }, query: { people: '3' } }), res, next)
+        expect(service.findAvailable).toHaveBeenCalledWith('A', '3')
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith([mesaPublica])
+    })
+
+    it('getMine usa el id del cliente autenticado', async () => {
+        const { service, controller, res, next } = setup()
+        await controller.getMine(req({ params: { restaurantId: 'A' }, user: { id: 'cliente-1', role: 'cliente', restaurantId: null } }), res, next)
+        expect(service.findMine).toHaveBeenCalledWith('A', 'cliente-1')
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith(mesaPublica)
+    })
+
+    it('occupy usa el id del cliente autenticado e ignora el cuerpo', async () => {
+        const { service, controller, res, next } = setup()
+        await controller.occupy(req({ params: { restaurantId: 'A', id: 't1' }, body: { clientId: 'otro' }, user: { id: 'cliente-1', role: 'cliente', restaurantId: null } }), res, next)
+        expect(service.occupy).toHaveBeenCalledWith('A', 't1', 'cliente-1')
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith(mesaPublica)
+    })
+})
