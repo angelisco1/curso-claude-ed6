@@ -23,7 +23,7 @@ export class AuthController {
     register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             if (!this.registerClientUseCase) {
-                throw new Error('RegisterClientUseCase not configured')
+                throw new Error('RegisterClientUseCase no está configurado')
             }
             const result = await this.registerClientUseCase.execute({
                 firstName: req.body.firstName,

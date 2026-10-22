@@ -33,6 +33,13 @@
           </a>
         }
 
+        @if (canSeeMesas()) {
+          <a routerLink="/mesas" routerLinkActive="active" class="nav-item">
+            <lucide-icon name="layout-grid" [size]="18"></lucide-icon>
+            <span>Mesas</span>
+          </a>
+        }
+
         @if (canSeeSalon()) {
           <a routerLink="/salon" routerLinkActive="active" class="nav-item">
             <lucide-icon name="armchair" [size]="18"></lucide-icon>

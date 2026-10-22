@@ -9,12 +9,12 @@ export class Role {
 
     constructor(value: string) {
         if (!value || typeof value !== 'string') {
-            throw new InvalidRoleError('Role must be provided')
+            throw new InvalidRoleError('El rol es obligatorio')
         }
 
         const normalizedValue = value.trim().toLowerCase()
         if (!VALID_ROLES.includes(normalizedValue)) {
-            throw new InvalidRoleError(`Invalid role: ${value}. Must be one of: ${VALID_ROLES.join(', ')}`)
+            throw new InvalidRoleError(`Rol inválido: ${value}. Debe ser uno de: ${VALID_ROLES.join(', ')}`)
         }
         this.value = normalizedValue as EmployeeRoleType
     }

@@ -2,7 +2,14 @@ import { randomUUID } from 'crypto'
 import type { Order, OrderItem } from '@models/order.model.js'
 import { normalizeOrderStatus } from '@models/order.model.js'
 import type { OrderRepository } from '@repositories/order.repository.js'
-import { RestaurantIdRequiredError, OrderNotFoundError } from '@errors/DomainErrors.js'
+import type { TableRepository } from '@repositories/table.repository.js'
+import {
+    RestaurantIdRequiredError,
+    OrderNotFoundError,
+    TableNotFoundError,
+    TableNotOccupiedError,
+    TableNotAssignedError
+} from '@errors/DomainErrors.js'
 
 export interface CreateOrderRequest {
     restaurantId: string
@@ -22,11 +29,17 @@ export interface OrderRequester {
 }
 
 export class OrderService {
-    constructor(private readonly orderRepository: OrderRepository) {}
+    constructor(
+        private readonly orderRepository: OrderRepository,
+        private readonly tableRepository: TableRepository
+    ) {}
 
-    async create(request: CreateOrderRequest): Promise<Order> {
+    async create(request: CreateOrderRequest, requester: OrderRequester): Promise<Order> {
         if (!request.restaurantId || request.restaurantId.trim() === '') {
             throw new RestaurantIdRequiredError()
+        }
+        if (request.tableId !== null) {
+            await this.validateTable(request.restaurantId, request.tableId, requester)
         }
 
         const items: OrderItem[] = []
@@ -87,6 +100,19 @@ export class OrderService {
         item.status = normalizedStatus
 
         await this.orderRepository.updateItemStatus(orderId, itemId, normalizedStatus)
+    }
+
+    private async validateTable(restaurantId: string, tableId: string, requester: OrderRequester): Promise<void> {
+        const table = await this.tableRepository.findById(tableId)
+        if (!table || table.restaurantId !== restaurantId) {
+            throw new TableNotFoundError()
+        }
+        if (table.status !== 'ocupada') {
+            throw new TableNotOccupiedError()
+        }
+        if (requester.role === 'cliente' && table.occupiedBy !== requester.id) {
+            throw new TableNotAssignedError()
+        }
     }
 
     private canView(order: Order, requester: OrderRequester): boolean {

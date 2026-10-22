@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core'
 import { Router, RouterLink } from '@angular/router'
 import { DecimalPipe } from '@angular/common'
+import { HttpErrorResponse } from '@angular/common/http'
 import { CartStore } from '../../core/store/cart.store'
 import { OrderService } from '../../core/services/order.service'
 
@@ -45,6 +46,12 @@ import { OrderService } from '../../core/services/order.service'
 
           <aside class="order-summary card">
             <h3>Resumen</h3>
+            @if (cartStore.table(); as table) {
+              <div class="summary-row">
+                <span>Mesa</span>
+                <span>{{ table.number }}</span>
+              </div>
+            }
             <div class="summary-row">
               <span>Items ({{ cartStore.itemCount() }})</span>
               <span>{{ cartStore.total() | number:'1.2-2' }} €</span>
@@ -196,7 +203,12 @@ export class CartComponent {
 
   confirmOrder(): void {
     const restaurantId = this.cartStore.restaurantId()
+    const table = this.cartStore.table()
     if (!restaurantId || this.cartStore.items().length === 0) return
+    if (!table || table.restaurantId !== restaurantId) {
+      this.router.navigate(['/restaurants', restaurantId, 'table'])
+      return
+    }
 
     this.loading.set(true)
     this.error.set(null)
@@ -207,13 +219,22 @@ export class CartComponent {
       notes: item.notes || null
     }))
 
-    this.orderService.createOrder(restaurantId, items).subscribe({
+    this.orderService.createOrder(restaurantId, table.id, items).subscribe({
       next: (order) => {
-        this.cartStore.clear()
+        this.cartStore.clearItems()
         this.router.navigate(['/orders', order.id])
       },
-      error: (err) => {
-        this.error.set('Error al confirmar el pedido. Inténtalo de nuevo.')
+      error: (err: HttpErrorResponse) => {
+        const tableErrors = ['TableNotFoundError', 'TableNotOccupiedError', 'TableNotAssignedError']
+        if (tableErrors.includes(err.error?.error)) {
+          // La mesa ya no es válida (liberada por el personal, etc.): hay que elegir otra
+          this.cartStore.setTable(null)
+          this.router.navigate(['/restaurants', restaurantId, 'table'], {
+            state: { message: err.error?.message ?? err.error?.error }
+          })
+          return
+        }
+        this.error.set(err.error?.message ?? err.error?.error ?? 'Error al confirmar el pedido. Inténtalo de nuevo.')
         this.loading.set(false)
       }
     })

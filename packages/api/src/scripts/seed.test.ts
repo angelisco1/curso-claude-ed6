@@ -18,4 +18,18 @@ describe('seed', () => {
         expect(resultado.stderr).toContain('El seed no se puede ejecutar con NODE_ENV=production')
         expect(resultado.stdout).not.toContain('Database initialized')
     })
+
+    it('se ejecuta sin errores sobre una base de datos vacía', () => {
+        const resultado = spawnSync(process.execPath, ['--import', 'tsx', 'src/scripts/seed.ts'], {
+            cwd: apiDir,
+            env: { ...process.env, NODE_ENV: 'test' },
+            encoding: 'utf-8',
+            timeout: 60000
+        })
+
+        expect(resultado.stderr).not.toContain('Seed failed')
+        expect(resultado.status).toBe(0)
+        expect(resultado.stdout).toContain('=== Seed completado ===')
+    }, 60000)
 })
+

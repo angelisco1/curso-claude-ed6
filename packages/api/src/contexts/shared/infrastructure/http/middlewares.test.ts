@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { getJwtSecret } from '@config/jwt.js'
-import { authenticate, authorizeRestaurant, type AuthRequest, type AuthUser } from '@shared/infrastructure/http/middlewares.js'
+import { authenticate, authorize, authorizeRestaurant, type AuthRequest, type AuthUser } from '@shared/infrastructure/http/middlewares.js'
 
 const crearRes = () => {
     const res: any = {}
@@ -72,6 +72,48 @@ describe('authenticate', () => {
         authenticate(crearReq(), res, next)
 
         expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({ error: 'No autorizado: no se ha enviado el token' })
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it('rechaza con 401 un token mal formado', () => {
+        const req = { headers: { authorization: 'Bearer ' }, params: {} } as unknown as AuthRequest
+        const res = crearRes()
+
+        authenticate(req, res, vi.fn())
+
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({ error: 'No autorizado: token mal formado' })
+    })
+
+    it('rechaza con 401 un token inválido', () => {
+        const res = crearRes()
+
+        authenticate(crearReq('no-es-un-jwt'), res, vi.fn())
+
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({ error: 'No autorizado: token inválido' })
+    })
+
+    it('rechaza con 401 un payload inválido con el mensaje en español', () => {
+        const res = crearRes()
+
+        authenticate(crearReq(firmar({ id: 'u1', role: 'superuser' })), res, vi.fn())
+
+        expect(res.json).toHaveBeenCalledWith({ error: 'No autorizado: token inválido' })
+    })
+})
+
+describe('authorize', () => {
+    it('responde 403 en español si el rol no está permitido', () => {
+        const req = { user: { id: 'c', role: 'cliente', restaurantId: null }, params: {} } as unknown as AuthRequest
+        const res = crearRes()
+        const next = vi.fn()
+
+        authorize(['admin'])(req, res, next)
+
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ error: 'Prohibido: permisos insuficientes' })
         expect(next).not.toHaveBeenCalled()
     })
 })
@@ -99,7 +141,7 @@ describe('authorizeRestaurant', () => {
     it('responde 403 a un empleado de otro restaurante', () => {
         const { next, res } = ejecutar({ id: 'm', role: 'manager', restaurantId: 'r1' }, 'r2')
         expect(res.status).toHaveBeenCalledWith(403)
-        expect(res.json).toHaveBeenCalledWith({ error: 'Forbidden: Insufficient permissions' })
+        expect(res.json).toHaveBeenCalledWith({ error: 'Prohibido: permisos insuficientes' })
         expect(next).not.toHaveBeenCalled()
     })
 

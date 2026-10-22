@@ -40,6 +40,24 @@ describe('rate limiting en /auth', () => {
         expect((await login('existente@x.com', 'password-largo-123')).status).toBe(200)
     })
 
+    it('un login con credenciales incorrectas responde 401 con el mensaje en español', async () => {
+        const res = await login('mensajes@x.com')
+        expect(res.status).toBe(401)
+        expect(res.body).toEqual({ error: 'InvalidCredentialsError', message: 'Credenciales inválidas' })
+    })
+
+    it('una ruta protegida sin token responde 401 con el mensaje en español', async () => {
+        const res = await request(app).get('/api/v1/orders/mine')
+        expect(res.status).toBe(401)
+        expect(res.body).toEqual({ error: 'No autorizado: no se ha enviado el token' })
+    })
+
+    it('una ruta protegida con un token inválido responde 401 con el mensaje en español', async () => {
+        const res = await request(app).get('/api/v1/orders/mine').set('Authorization', 'Bearer no-es-un-jwt')
+        expect(res.status).toBe(401)
+        expect(res.body).toEqual({ error: 'No autorizado: token inválido' })
+    })
+
     it('el registro devuelve 429 al superar el límite por IP', async () => {
         expect((await register('nuevo1@x.com')).status).toBe(201)
         expect((await register('nuevo2@x.com')).status).toBe(201)

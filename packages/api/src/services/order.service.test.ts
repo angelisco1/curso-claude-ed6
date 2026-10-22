@@ -1,8 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { OrderService, type OrderRequester } from './order.service.js'
 import { MockOrderRepository } from '@repositories/mocks/MockOrderRepository.js'
+import { MockTableRepository } from '@repositories/mocks/MockTableRepository.js'
 import type { Order } from '@models/order.model.js'
-import { OrderNotFoundError, InvalidOrderStatusError } from '@errors/DomainErrors.js'
+import type { Table } from '@models/table.model.js'
+import {
+    OrderNotFoundError,
+    InvalidOrderStatusError,
+    TableNotFoundError,
+    TableNotOccupiedError,
+    TableNotAssignedError
+} from '@errors/DomainErrors.js'
 
 describe('OrderService.updateItemStatus', () => {
     let repo: MockOrderRepository
@@ -14,7 +22,7 @@ describe('OrderService.updateItemStatus', () => {
 
     beforeEach(async () => {
         repo = new MockOrderRepository()
-        service = new OrderService(repo)
+        service = new OrderService(repo, new MockTableRepository())
 
         testOrder = {
             id: 'order-1',
@@ -79,7 +87,7 @@ describe('OrderService.getById (control de acceso)', () => {
 
     beforeEach(async () => {
         const repo = new MockOrderRepository()
-        service = new OrderService(repo)
+        service = new OrderService(repo, new MockTableRepository())
         await repo.create({
             id: 'order-1',
             restaurantId: 'rest-1',
@@ -112,5 +120,76 @@ describe('OrderService.getById (control de acceso)', () => {
 
     it('lanza OrderNotFoundError si el pedido no existe', async () => {
         await expect(service.getById('no-existe', admin)).rejects.toThrow(OrderNotFoundError)
+    })
+})
+
+describe('OrderService.create (validación de la mesa)', () => {
+    let orders: MockOrderRepository
+    let tables: MockTableRepository
+    let service: OrderService
+
+    const cliente: OrderRequester = { id: 'cliente-1', role: 'cliente', restaurantId: null }
+    const camarero: OrderRequester = { id: 'camarero-1', role: 'camarero', restaurantId: 'A' }
+    const items = [{ dishId: 'd1', quantity: 2, notes: null }]
+
+    const mesa = (props: Partial<Table> & Pick<Table, 'id'>): Table => ({
+        number: 1,
+        description: null,
+        capacity: 4,
+        status: 'libre',
+        occupiedBy: null,
+        restaurantId: 'A',
+        createdAt: '2026-10-22T10:00:00.000Z',
+        updatedAt: '2026-10-22T10:00:00.000Z',
+        ...props
+    })
+
+    const pedido = (tableId: string | null, requester: OrderRequester) =>
+        service.create({ restaurantId: 'A', tableId, clientId: requester.id, items }, requester)
+
+    beforeEach(async () => {
+        orders = new MockOrderRepository()
+        tables = new MockTableRepository()
+        service = new OrderService(orders, tables)
+        await tables.save(mesa({ id: 'suya', number: 1, status: 'ocupada', occupiedBy: 'cliente-1' }))
+        await tables.save(mesa({ id: 'ajena', number: 2, status: 'ocupada', occupiedBy: 'cliente-2' }))
+        await tables.save(mesa({ id: 'staff', number: 3, status: 'ocupada', occupiedBy: null }))
+        await tables.save(mesa({ id: 'libre', number: 4 }))
+        await tables.save(mesa({ id: 'reservada', number: 5, status: 'reservada' }))
+        await tables.save(mesa({ id: 'de-b', number: 1, status: 'ocupada', occupiedBy: 'cliente-1', restaurantId: 'B' }))
+    })
+
+    it('sin mesa crea el pedido como antes', async () => {
+        const order = await pedido(null, camarero)
+        expect(order.tableId).toBeNull()
+        expect(order.items).toHaveLength(2)
+        expect(orders.orders).toHaveLength(1)
+    })
+
+    it('un cliente pide con la mesa que ocupa', async () => {
+        const order = await pedido('suya', cliente)
+        expect(order.tableId).toBe('suya')
+        expect(orders.orders).toHaveLength(1)
+    })
+
+    it('el staff pide con cualquier mesa ocupada del restaurante, la ocupe un cliente o no', async () => {
+        await expect(pedido('ajena', camarero)).resolves.toMatchObject({ tableId: 'ajena' })
+        await expect(pedido('staff', camarero)).resolves.toMatchObject({ tableId: 'staff' })
+    })
+
+    it.each(['no-existe', 'de-b', ''])('mesa %j inexistente o de otro restaurante -> TableNotFoundError', async (tableId) => {
+        await expect(pedido(tableId, cliente)).rejects.toThrow(TableNotFoundError)
+        expect(orders.orders).toHaveLength(0)
+    })
+
+    it.each(['libre', 'reservada'])('mesa %s -> TableNotOccupiedError (también para el staff)', async (tableId) => {
+        await expect(pedido(tableId, cliente)).rejects.toThrow(TableNotOccupiedError)
+        await expect(pedido(tableId, camarero)).rejects.toThrow('La mesa no está ocupada')
+        expect(orders.orders).toHaveLength(0)
+    })
+
+    it.each(['ajena', 'staff'])('un cliente con la mesa %s -> TableNotAssignedError', async (tableId) => {
+        await expect(pedido(tableId, cliente)).rejects.toThrow(TableNotAssignedError)
+        expect(orders.orders).toHaveLength(0)
     })
 })

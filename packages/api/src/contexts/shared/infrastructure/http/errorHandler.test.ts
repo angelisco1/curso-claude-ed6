@@ -1,7 +1,19 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import { errorHandler } from './errorHandler.js'
-import { OrderNotFoundError, InvalidOrderStatusError } from '@errors/DomainErrors.js'
+import {
+    OrderNotFoundError,
+    InvalidOrderStatusError,
+    TableNotFoundError,
+    DuplicatedTableNumberError,
+    TableNotAvailableError,
+    ClientAlreadyHasTableError,
+    TableOccupiedError,
+    TableNotOccupiedError,
+    TableNotAssignedError,
+    InvalidTableNumberError,
+    InvalidPeopleCountError
+} from '@errors/DomainErrors.js'
 
 function run(err: unknown) {
     const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response
@@ -21,9 +33,38 @@ describe('errorHandler', () => {
         expect(res.status).toHaveBeenCalledWith(400)
     })
 
+    it('responde 404 para TableNotFoundError con el mensaje en español', () => {
+        const res = run(new TableNotFoundError())
+        expect(res.status).toHaveBeenCalledWith(404)
+        expect(res.json).toHaveBeenCalledWith({ error: 'TableNotFoundError', message: 'Mesa no encontrada' })
+    })
+
+    it.each([
+        new DuplicatedTableNumberError(),
+        new TableNotAvailableError(),
+        new ClientAlreadyHasTableError(),
+        new TableOccupiedError(),
+        new TableNotOccupiedError()
+    ])('responde 409 para $name', (error) => {
+        const res = run(error)
+        expect(res.status).toHaveBeenCalledWith(409)
+        expect(res.json).toHaveBeenCalledWith({ error: error.name, message: error.message })
+    })
+
+    it('responde 403 para TableNotAssignedError', () => {
+        const res = run(new TableNotAssignedError())
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ error: 'TableNotAssignedError', message: 'La mesa no está asignada a este cliente' })
+    })
+
+    it.each([new InvalidTableNumberError(), new InvalidPeopleCountError()])('responde 400 para $name', (error) => {
+        const res = run(error)
+        expect(res.status).toHaveBeenCalledWith(400)
+    })
+
     it('responde 500 genérico sin filtrar el mensaje para errores inesperados', () => {
         const res = run(new Error('detalle interno'))
         expect(res.status).toHaveBeenCalledWith(500)
-        expect(res.json).toHaveBeenCalledWith({ error: 'InternalServerError', message: 'Something went wrong' })
+        expect(res.json).toHaveBeenCalledWith({ error: 'InternalServerError', message: 'Algo ha ido mal' })
     })
 })
