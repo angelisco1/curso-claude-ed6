@@ -3,7 +3,7 @@ import request from 'supertest'
 import { randomUUID } from 'crypto'
 import app from '../app.js'
 import { dbConfig } from '@config/database.js'
-import { setupTestDatabase, tokenFor, bearer, seedTwoRestaurants, type SeededRestaurants } from '../test/http-helpers.js'
+import { setupTestDatabase, tokenFor, bearer, seedTwoRestaurants, createClient, insertTable, type SeededRestaurants } from '../test/http-helpers.js'
 
 setupTestDatabase()
 
@@ -123,3 +123,82 @@ describe('autorización de pedidos', () => {
         })
     })
 })
+
+describe('pedidos con mesa (POST /api/v1/orders)', () => {
+    let seed: SeededRestaurants
+    let cliente: { id: string; auth: string }
+    let otroCliente: { id: string; auth: string }
+    let camarero: string
+    let mesaCliente: string
+    let mesaOtroCliente: string
+    let mesaLibre: string
+    let mesaReservada: string
+    let mesaDeB: string
+
+    const crearPedido = (auth: string, tableId: string | null | undefined, restaurantId = seed.restaurantA) =>
+        request(app).post('/api/v1/orders').set('Authorization', auth).send({
+            restaurantId,
+            ...(tableId === undefined ? {} : { tableId }),
+            items: [{ dishId: restaurantId === seed.restaurantA ? seed.dishA : seed.dishB, quantity: 2, notes: null }]
+        })
+
+    beforeAll(async () => {
+        seed = await seedTwoRestaurants()
+        cliente = await createClient()
+        otroCliente = await createClient()
+        camarero = bearer(tokenFor({ role: 'camarero', restaurantId: seed.restaurantA }))
+        mesaCliente = await insertTable(seed.restaurantA, { number: 1, status: 'ocupada', occupiedBy: cliente.id })
+        mesaOtroCliente = await insertTable(seed.restaurantA, { number: 2, status: 'ocupada', occupiedBy: otroCliente.id })
+        mesaLibre = await insertTable(seed.restaurantA, { number: 3 })
+        mesaReservada = await insertTable(seed.restaurantA, { number: 4, status: 'reservada' })
+        mesaDeB = await insertTable(seed.restaurantB, { number: 1, status: 'ocupada' })
+    })
+
+    it('cliente con su mesa -> 201 y el pedido aparece en activos con ese tableId', async () => {
+        const res = await crearPedido(cliente.auth, mesaCliente)
+        expect(res.status).toBe(201)
+        expect(res.body).toMatchObject({ restaurantId: seed.restaurantA, tableId: mesaCliente, clientId: cliente.id })
+        expect(res.body.items).toHaveLength(2)
+
+        const activos = await request(app).get('/api/v1/orders/active').set('Authorization', camarero)
+        expect(activos.body.find((o: { id: string }) => o.id === res.body.id)?.tableId).toBe(mesaCliente)
+    })
+
+    it('cliente con la mesa de otro cliente -> 403 TableNotAssignedError', async () => {
+        const res = await crearPedido(cliente.auth, mesaOtroCliente)
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual({ error: 'TableNotAssignedError', message: 'La mesa no está asignada a este cliente' })
+    })
+
+    it.each([['libre', () => mesaLibre], ['reservada', () => mesaReservada]])('mesa %s -> 409 TableNotOccupiedError', async (_estado, mesa) => {
+        const res = await crearPedido(cliente.auth, mesa())
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual({ error: 'TableNotOccupiedError', message: 'La mesa no está ocupada' })
+    })
+
+    it('mesa de otro restaurante o inexistente -> 404 TableNotFoundError', async () => {
+        const res = await crearPedido(cliente.auth, mesaDeB)
+        expect(res.status).toBe(404)
+        expect(res.body).toEqual({ error: 'TableNotFoundError', message: 'Mesa no encontrada' })
+        expect((await crearPedido(cliente.auth, '5')).status).toBe(404)
+    })
+
+    it('sin mesa (null u omitida) -> 201 como antes', async () => {
+        const conNull = await crearPedido(camarero, null)
+        expect(conNull.status).toBe(201)
+        expect(conNull.body.tableId).toBeNull()
+        const omitida = await crearPedido(camarero, undefined)
+        expect(omitida.status).toBe(201)
+        expect(omitida.body.tableId).toBeNull()
+    })
+
+    it('el camarero pide para una mesa ocupada por un cliente -> 201', async () => {
+        expect((await crearPedido(camarero, mesaOtroCliente)).status).toBe(201)
+    })
+
+    it('ningún pedido rechazado se ha guardado', async () => {
+        const filas = await dbConfig.all<{ table_id: string }>('SELECT table_id FROM orders WHERE table_id IN (?, ?, ?)', [mesaLibre, mesaReservada, mesaDeB])
+        expect(filas).toHaveLength(0)
+    })
+})
+
