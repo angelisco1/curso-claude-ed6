@@ -83,4 +83,29 @@ describe('SqliteTableRepository (integración)', () => {
             expect(await repo.findById('t-crud-2')).toBeNull()
         })
     })
+
+    describe('disponibilidad y ocupación', () => {
+        beforeAll(async () => {
+            await insertRestaurant(db, 'r-occ')
+            await repo.save(buildTable({ id: 't-occ-1', number: 1, capacity: 2, restaurantId: 'r-occ' }))
+            await repo.save(buildTable({ id: 't-occ-2', number: 2, capacity: 4, restaurantId: 'r-occ' }))
+        })
+
+        it('findAvailable devuelve las mesas libres con capacidad suficiente', async () => {
+            const tables = await repo.findAvailable('r-occ', 3)
+            expect(tables.map(t => t.id)).toEqual(['t-occ-2'])
+        })
+
+        it('occupyIfFree ocupa una mesa libre y la asocia al cliente', async () => {
+            expect(await repo.occupyIfFree('r-occ', 't-occ-1', 'c2')).toBe(true)
+            const table = await repo.findById('t-occ-1')
+            expect(table?.status).toBe('ocupada')
+            expect(table?.occupiedBy).toBe('c2')
+        })
+
+        it('findByOccupant devuelve la mesa del cliente o null', async () => {
+            expect((await repo.findByOccupant('c2'))?.id).toBe('t-occ-1')
+            expect(await repo.findByOccupant('nadie')).toBeNull()
+        })
+    })
 })
