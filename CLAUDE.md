@@ -21,14 +21,15 @@ Resttek: plataforma de gestión de restaurantes. Monorepo con **npm workspaces**
 Conviven **dos estilos**; identificar cuál aplica antes de tocar código:
 
 - **Hexagonal + DDD** solo en `contexts/employee/` (`domain/` → `application/` casos de uso → `infrastructure/` con repo SQLite, Bcrypt y `http/`). `Employee` es la única entidad de dominio (constructor privado + `create()`), con value objects `Email` (en `contexts/shared`) y `Role`. La composición de dependencias está en `infrastructure/http/dependencies.ts`.
-- **Por capas** para `restaurant`, `dish`, `ingredient`, `order`: carpetas transversales `models/` (interfaces planas), `repositories/`, `services/`, `controllers/`, `routes/` (las rutas componen las dependencias). La validación vive en los servicios.
+- **Por capas** para `restaurant`, `dish`, `ingredient`, `order`, `table` (mesas): carpetas transversales `models/` (interfaces planas), `repositories/`, `services/`, `controllers/`, `routes/` (las rutas componen las dependencias). La validación vive en los servicios.
 
 Otros detalles:
 - Alias de rutas en `tsconfig.json` (`@services/*`, `@repositories/*`, `@employee/*`, `@shared/*`, etc.); Vitest los resuelve con `vite-tsconfig-paths`. Módulos ESM (`"type": "module"`, `module: nodenext`), con `strict`, `noUncheckedIndexedAccess` y `exactOptionalPropertyTypes` activados.
-- Errores en `errors/` (`AppError`, `DomainErrors`) y `errorHandler` en `contexts/shared/infrastructure/http/`. Auth con JWT: middlewares `authenticate` / `authorize` (roles) en `middlewares.ts`.
+- Errores en `errors/` (`AppError`, `DomainErrors`) y `errorHandler` en `contexts/shared/infrastructure/http/`, que mapea por nombre a 404/401/403/409 (listas `NOT_FOUND_ERRORS`, `UNAUTHORIZED_ERRORS`, `FORBIDDEN_ERRORS`, `CONFLICT_ERRORS`) y 400 por defecto. **Los mensajes de error van en español** (el campo `error` es el nombre de la clase y no se traduce); los middlewares de auth responden solo `{ error: '<texto>' }`, sin `message`. Auth con JWT: middlewares `authenticate` / `authorize` (roles) en `middlewares.ts`.
 - SQLite en `packages/api/resttek.db`; las tablas se crean al arrancar (migraciones en código en `config/database.ts`). Con `NODE_ENV=test` se usa `:memory:`.
 - Tests junto al código (`*.test.ts`); los repositorios usan mocks en `repositories/mocks` y `application/mocks`.
-- Rutas bajo `/api/v1/...`.
+- Rutas bajo `/api/v1/...`. El contrato de mesas y de `POST /orders` está en `docs/arquitectura/openapi-mesas.yaml`.
+- Mesas: tabla `restaurant_tables`; un cliente ocupa como mucho una mesa (`occupied_by`, ocupación atómica en `occupyIfFree`) y `orders.table_id` guarda el id de la mesa (sin FK; los valores antiguos se muestran tal cual).
 
 ## Arquitectura del frontend
 
