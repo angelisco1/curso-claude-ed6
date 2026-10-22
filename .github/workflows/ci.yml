@@ -1,0 +1,104 @@
+name: CI
+
+# Se ejecuta en cada PR que apunte a development o main. Para que bloquee el merge,
+# marca los jobs como "required status checks" en la protección de ramas de GitHub.
+on:
+  pull_request:
+    branches: [development, main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests de la API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  build:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web-admin, web-empleados, web-clientes]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @resttek/${{ matrix.app }}
+
+  security-review:
+    name: Revisión de seguridad con Claude
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    # Los PR desde forks no tienen acceso a los secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Analizar los cambios en modo headless
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          PROMPT="$(cat .github/claude/security-review-prompt.md)
+
+          Rama base contra la que comparar: ${BASE_REF}
+          Obtén los cambios con: git diff ${BASE_REF}...HEAD"
+
+          # Solo herramientas de lectura: Claude no puede modificar el repo ni ejecutar otros comandos.
+          claude -p "$PROMPT" \
+            --model claude-opus-5-5 \
+            --max-turns 30 \
+            --output-format json \
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)" \
+            > claude-output.json
+
+          jq -r '.result' claude-output.json > security-report.md
+          cat security-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar el informe en el PR
+        if: always() && hashFiles('security-report.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "## 🔒 Revisión de seguridad (Claude)"
+            echo
+            cat security-report.md
+          } > comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+
+      - name: Fallar si hay problemas de seguridad
+        run: |
+          if grep -q "VEREDICTO: APROBADO" security-report.md; then
+            echo "Sin problemas de seguridad."
+          else
+            echo "::error::Claude ha detectado posibles problemas de seguridad (o no emitió veredicto). Revisa el informe."
+            exit 1
+          fi
