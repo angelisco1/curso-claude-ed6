@@ -6,7 +6,8 @@ import {
     InvalidTableNumberError,
     InvalidTableCapacityError,
     RestaurantIdRequiredError,
-    DuplicatedTableNumberError
+    DuplicatedTableNumberError,
+    TableNotFoundError
 } from '@errors/DomainErrors.js'
 
 export interface CreateTableDTO {
@@ -15,6 +16,13 @@ export interface CreateTableDTO {
     capacity: number
     status?: string
     restaurantId: string
+}
+
+export interface UpdateTableDTO {
+    number: number
+    description?: string | null
+    capacity: number
+    status?: string
 }
 
 export class TableService {
@@ -37,6 +45,41 @@ export class TableService {
         await this.ensureNumberIsFree(table)
         await this.tableRepository.save(table)
         return table
+    }
+
+    async update(restaurantId: string, id: string, dto: UpdateTableDTO): Promise<Table> {
+        const existing = await this.findById(restaurantId, id)
+
+        const updated = this.buildTable({
+            id: existing.id,
+            number: dto.number,
+            description: dto.description ?? null,
+            capacity: dto.capacity,
+            status: dto.status ?? existing.status,
+            occupiedBy: existing.occupiedBy,
+            restaurantId: existing.restaurantId,
+            createdAt: existing.createdAt,
+            updatedAt: new Date().toISOString()
+        })
+        if (updated.status !== existing.status) {
+            updated.occupiedBy = null
+        }
+
+        await this.ensureNumberIsFree(updated)
+        await this.tableRepository.save(updated)
+        return updated
+    }
+
+    async findById(restaurantId: string, id: string): Promise<Table> {
+        const table = await this.tableRepository.findById(id)
+        if (!table || table.restaurantId !== restaurantId) {
+            throw new TableNotFoundError()
+        }
+        return table
+    }
+
+    async findByRestaurantId(restaurantId: string): Promise<Table[]> {
+        return this.tableRepository.findByRestaurantId(restaurantId)
     }
 
     private async ensureNumberIsFree(table: Table): Promise<void> {
