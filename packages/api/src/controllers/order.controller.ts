@@ -14,7 +14,7 @@ export class OrderController {
                 tableId: tableId ?? null,
                 clientId,
                 items
-            })
+            }, this.requesterFrom(req))
             res.status(201).json(order)
         } catch (error) {
             next(error)

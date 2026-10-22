@@ -91,6 +91,22 @@ describe('OrderController (requester y errores)', () => {
         expect(res.json).not.toHaveBeenCalled()
     })
 
+    it('createOrder pasa el tableId y el requester construido desde req.user', async () => {
+        const { service, controller, res, next } = setup()
+        const items = [{ dishId: 'd1', quantity: 1, notes: null }]
+        await controller.createOrder(req({ user, body: { restaurantId: 'A', tableId: 't1', items } }), res, next)
+        expect(service.create).toHaveBeenCalledWith(
+            { restaurantId: 'A', tableId: 't1', clientId: 'u1', items },
+            { id: 'u1', role: 'camarero', restaurantId: 'A' })
+        expect(res.status).toHaveBeenCalledWith(201)
+    })
+
+    it('createOrder sin tableId lo envía como null', async () => {
+        const { service, controller, res, next } = setup()
+        await controller.createOrder(req({ user, body: { restaurantId: 'A', items: [] } }), res, next)
+        expect(service.create.mock.calls[0]?.[0]).toMatchObject({ tableId: null })
+    })
+
     it('createOrder no filtra error.message: delega en next', async () => {
         const { service, controller, res, next } = setup()
         const error = new Error('detalle interno')
