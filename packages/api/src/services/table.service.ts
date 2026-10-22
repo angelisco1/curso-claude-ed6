@@ -9,7 +9,9 @@ import {
     DuplicatedTableNumberError,
     TableNotFoundError,
     TableOccupiedError,
-    InvalidPeopleCountError
+    InvalidPeopleCountError,
+    ClientAlreadyHasTableError,
+    TableNotAvailableError
 } from '@errors/DomainErrors.js'
 
 export interface CreateTableDTO {
@@ -114,6 +116,24 @@ export class TableService {
             throw new TableNotFoundError()
         }
         return table
+    }
+
+    async occupy(restaurantId: string, id: string, clientId: string): Promise<Table> {
+        const table = await this.findById(restaurantId, id)
+        if (table.occupiedBy === clientId) {
+            return table
+        }
+        if (await this.tableRepository.findByOccupant(clientId)) {
+            throw new ClientAlreadyHasTableError()
+        }
+        if (!(await this.tableRepository.occupyIfFree(restaurantId, id, clientId))) {
+            // Distingue la carrera del propio cliente (ocupó otra mesa a la vez) de una mesa no libre
+            if (await this.tableRepository.findByOccupant(clientId)) {
+                throw new ClientAlreadyHasTableError()
+            }
+            throw new TableNotAvailableError()
+        }
+        return this.findById(restaurantId, id)
     }
 
     private async ensureNumberIsFree(table: Table): Promise<void> {

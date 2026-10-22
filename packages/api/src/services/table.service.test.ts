@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { TableService } from './table.service.js'
 import { MockTableRepository } from '@repositories/mocks/MockTableRepository.js'
 import {
@@ -9,7 +9,9 @@ import {
     DuplicatedTableNumberError,
     TableNotFoundError,
     TableOccupiedError,
-    InvalidPeopleCountError
+    InvalidPeopleCountError,
+    ClientAlreadyHasTableError,
+    TableNotAvailableError
 } from '@errors/DomainErrors.js'
 
 describe('TableService', () => {
@@ -227,6 +229,60 @@ describe('TableService', () => {
             await repo.occupyIfFree('A', table.id, 'cliente-1')
             await expect(service.findMine('B', 'cliente-1')).rejects.toThrow(TableNotFoundError)
             await expect(service.findMine('A', 'cliente-2')).rejects.toThrow(TableNotFoundError)
+        })
+    })
+
+    describe('occupy', () => {
+        let t1: Awaited<ReturnType<TableService['create']>>
+        let t2: Awaited<ReturnType<TableService['create']>>
+
+        beforeEach(async () => {
+            t1 = await service.create({ number: 1, capacity: 4, restaurantId: 'A' })
+            t2 = await service.create({ number: 2, capacity: 4, restaurantId: 'A' })
+        })
+
+        it('ocupa una mesa libre y la asocia al cliente', async () => {
+            const table = await service.occupy('A', t1.id, 'cliente-1')
+            expect(table).toMatchObject({ id: t1.id, status: 'ocupada', occupiedBy: 'cliente-1' })
+        })
+
+        it('es idempotente si el cliente ya ocupa esa mesa', async () => {
+            await service.occupy('A', t1.id, 'cliente-1')
+            const again = await service.occupy('A', t1.id, 'cliente-1')
+            expect(again).toMatchObject({ id: t1.id, status: 'ocupada', occupiedBy: 'cliente-1' })
+        })
+
+        it('rechaza ocupar una segunda mesa (también en otro restaurante)', async () => {
+            const enB = await service.create({ number: 1, capacity: 4, restaurantId: 'B' })
+            await service.occupy('A', t1.id, 'cliente-1')
+            await expect(service.occupy('A', t2.id, 'cliente-1')).rejects.toThrow(ClientAlreadyHasTableError)
+            await expect(service.occupy('B', enB.id, 'cliente-1')).rejects.toThrow('Ya tienes una mesa ocupada')
+            expect((await repo.findById(t2.id))?.status).toBe('libre')
+        })
+
+        it('rechaza una mesa ocupada por otro cliente o reservada', async () => {
+            await service.occupy('A', t1.id, 'cliente-1')
+            await expect(service.occupy('A', t1.id, 'cliente-2')).rejects.toThrow(TableNotAvailableError)
+            await service.updateStatus('A', t2.id, 'reservada')
+            await expect(service.occupy('A', t2.id, 'cliente-2')).rejects.toThrow('La mesa ya no está disponible')
+        })
+
+        it('lanza TableNotFoundError si la mesa no existe o es de otro restaurante', async () => {
+            await expect(service.occupy('B', t1.id, 'cliente-1')).rejects.toThrow(TableNotFoundError)
+            await expect(service.occupy('A', 'no-existe', 'cliente-1')).rejects.toThrow(TableNotFoundError)
+        })
+
+        it('si pierde una carrera porque el cliente ocupó otra mesa a la vez, responde ClientAlreadyHasTableError', async () => {
+            vi.spyOn(repo, 'occupyIfFree').mockImplementationOnce(async () => {
+                await repo.save({ ...t2, status: 'ocupada', occupiedBy: 'cliente-1' })
+                return false
+            })
+            await expect(service.occupy('A', t1.id, 'cliente-1')).rejects.toThrow(ClientAlreadyHasTableError)
+        })
+
+        it('si pierde una carrera porque otro cliente ocupó la mesa, responde TableNotAvailableError', async () => {
+            vi.spyOn(repo, 'occupyIfFree').mockResolvedValueOnce(false)
+            await expect(service.occupy('A', t1.id, 'cliente-1')).rejects.toThrow(TableNotAvailableError)
         })
     })
 })
