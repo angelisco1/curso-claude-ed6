@@ -28,7 +28,18 @@ const MENSAJES_ESPERADOS: Record<string, string> = {
     DishNotFoundError: 'Plato no encontrado',
     DatabaseNotInitializedError: 'La base de datos no está inicializada. Llama antes a dbConfig.initialize().',
     InvalidOrderStatusError: 'Estado de pedido inválido',
-    OrderNotFoundError: 'Pedido no encontrado'
+    OrderNotFoundError: 'Pedido no encontrado',
+    TableNotFoundError: 'Mesa no encontrada',
+    InvalidTableNumberError: 'El número de mesa debe ser un entero mayor que 0',
+    InvalidTableCapacityError: 'La capacidad debe ser un entero mayor que 0',
+    InvalidTableStatusError: 'Estado de mesa inválido',
+    InvalidPeopleCountError: 'El número de personas debe ser un entero mayor que 0',
+    DuplicatedTableNumberError: 'Ya existe una mesa con ese número en el restaurante',
+    TableNotAvailableError: 'La mesa ya no está disponible',
+    ClientAlreadyHasTableError: 'Ya tienes una mesa ocupada',
+    TableOccupiedError: 'No se puede eliminar una mesa ocupada',
+    TableNotOccupiedError: 'La mesa no está ocupada',
+    TableNotAssignedError: 'La mesa no está asignada a este cliente'
 }
 
 describe('DomainErrors', () => {
