@@ -17,6 +17,7 @@ Terminología del dominio y conceptos técnicos utilizados en el proyecto Restte
 | **DishIngredient** | Relación entre un plato y un ingrediente, con la cantidad necesaria. |
 | **Order** | Pedido realizado por un cliente. Contiene ítems (platos) y está asociado a un restaurante. |
 | **OrderItem** | Línea de un pedido: un plato con cantidad, notas opcionales y estado. |
+| **Table (Mesa)** | Mesa de un restaurante. Tiene número (único en el restaurante), descripción opcional, capacidad (comensales) y estado. Si la ocupa un cliente, guarda quién (`occupiedBy`). Los pedidos se asocian a ella por su `id`. |
 
 Dos particularidades del modelo que conviene tener presentes:
 
@@ -43,6 +44,23 @@ El valor almacenado es `manager`; "gerente" es solo su traducción en la interfa
 | **preparando** | Ítem siendo preparado en cocina. | cocinero |
 | **listo** | Ítem preparado, listo para servir. | cocinero |
 | **entregado** | Ítem entregado al cliente. Desaparece de las vistas activas. | camarero |
+
+### Estados de Mesa
+
+| Estado | Descripción | Quién lo pone |
+| --- | --- | --- |
+| **libre** | Disponible. Es el único estado que se ofrece a los clientes. | Estado inicial; el personal al liberarla |
+| **ocupada** | Hay comensales. Solo se puede pedir con mesas ocupadas. | El cliente al pulsar *Continuar* (queda asociada a él) o el personal a mano (sin cliente asociado) |
+| **reservada** | Apartada por el personal. No se ofrece a los clientes. No hay reservas con fecha/hora. | admin, manager, camarero |
+
+Reglas de las mesas:
+
+- **Una mesa por cliente**: un cliente solo puede ocupar una mesa a la vez, en cualquier restaurante. Si intenta ocupar otra recibe "Ya tienes una mesa ocupada".
+- **Liberación manual**: no hay liberación automática al entregar ni al pagar. La libera el personal (`admin`, `manager` o `camarero`) cambiando su estado a `libre`; el `cocinero` solo puede verlas.
+- **Cambiar el estado suelta al cliente**: cualquier cambio de estado hecho por el personal deja la mesa sin cliente asociado (`occupiedBy = null`).
+- **Ocupar es idempotente**: si el cliente vuelve a ocupar la mesa que ya ocupa, no es un error.
+- **No se borra una mesa ocupada**: primero hay que liberarla.
+- **Pedido con mesa**: la mesa debe ser del restaurante y estar ocupada; si pide un cliente, debe ocuparla él.
 
 ### Categorías de Platos
 
