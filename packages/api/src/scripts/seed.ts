@@ -5,6 +5,11 @@ import { SqliteEmployeeRepository } from '@employee/infrastructure/SqliteEmploye
 import { Employee } from '@employee/domain/Employee.js'
 
 const seed = async () => {
+    if (process.env.NODE_ENV === 'production') {
+        console.error('El seed no se puede ejecutar con NODE_ENV=production: crea usuarios con contraseñas conocidas.')
+        process.exit(1)
+    }
+
     try {
         await dbConfig.initialize()
         console.log('Database initialized.')
